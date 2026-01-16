@@ -195,29 +195,20 @@ class SpeechWaveGeneratorImpl: public SpeechWaveGenerator {
 	}
 
 	unsigned int generate(const unsigned int sampleCount, sample* sampleBuf) {
-		if(!frameManager) return 0;
+		if(!frameManager) return 0; 
+		double val=0;
 		for(unsigned int i=0;i<sampleCount;++i) {
 			const speechPlayer_frame_t* frame=frameManager->getCurrentFrame();
-			if(!frame) {
-				// No frame available (end-of-stream or buffer underflow).
-				// Return early so the caller can stop playback promptly rather than
-				// playing a full buffer of silence (which sounds like extra pauses).
-				for(unsigned int j=i;j<sampleCount;++j) sampleBuf[j].value=0;
+			if(frame) {
+				double voice=voiceGenerator.getNext(frame);
+				double cascadeOut=cascade.getNext(frame,voiceGenerator.glottisOpen,voice*frame->preFormantGain);
+				double fric=fricGenerator.getNext()*0.3*frame->fricationAmplitude;
+				double parallelOut=parallel.getNext(frame,fric*frame->preFormantGain);
+				double out=(cascadeOut+parallelOut)*frame->outputGain;
+				sampleBuf[i].value=(int)max(min(out*4000,32000),-32000);
+			} else {
 				return i;
 			}
-			double voice=voiceGenerator.getNext(frame);
-			double cascadeOut=cascade.getNext(frame,voiceGenerator.glottisOpen,voice*frame->preFormantGain);
-			// Older (ee80f4d-era) scaling: less hissy / less "spitty" frication.
-			double fric=fricGenerator.getNext()*0.2*frame->fricationAmplitude;
-			double parallelOut=parallel.getNext(frame,fric*frame->preFormantGain);
-
-			double outGain=frame->outputGain;
-			if(std::isfinite(outGain)==0) outGain=1.0;
-			if(outGain<0.0) outGain=0.0;
-			if(outGain>8.0) outGain=8.0;
-
-			double out=(cascadeOut+parallelOut)*outGain;
-			sampleBuf[i].value=(int)max(min(out*4000,32000),-32000);
 		}
 		return sampleCount;
 	}
