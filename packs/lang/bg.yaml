@@ -1,0 +1,19 @@
+# Bulgarian (bg)
+
+settings:
+  primaryStressDiv: 1.1
+  secondaryStressDiv: 1.05
+
+  # Bulgarian clusters are often tight; avoid adding extra closure gaps.
+  stopClosureClusterGapsEnabled: false
+
+normalization:
+  replacements:
+    # eSpeak bg (--ipa) commonly emits schwa for the vowel written "ъ".
+    # In NVSP we keep this distinct as ɤ.
+    - from: "ə"
+      to: "ɤ"
+
+    # Slavic palatalization marker: keep it audible as a /j/ glide.
+    - from: "ʲ"
+      to: "j"

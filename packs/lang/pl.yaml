@@ -1,0 +1,16 @@
+# Polish (pl)
+
+settings:
+  primaryStressDiv: 1.25
+  secondaryStressDiv: 1.07
+
+normalization:
+  replacements:
+    # eSpeak Polish uses the palatalization marker ʲ on consonants.
+    # Convert it to an audible /j/ glide so it doesn't get dropped.
+    - from: "ʲ"
+      to: "j"
+
+    # Some eSpeak outputs use plain 'y' for /ɨ/.
+    - from: "y"
+      to: "ɨ"

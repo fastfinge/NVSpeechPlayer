@@ -1,0 +1,38 @@
+# packs/lang/en.yaml
+# English base (treat this as UK-ish / non-rhotic baseline)
+
+settings:
+  # English sounds clearer with explicit stop closures.
+  stopClosureMode: always
+
+  # English: insert short aspiration after unvoiced stops in the right contexts.
+  postStopAspirationEnabled: true
+
+  # Keep your existing English long /uː/ shortening behavior (matches your Python logic).
+  englishLongUShortenEnabled: true
+  englishLongUWordFinalScale: 0.80
+
+normalization:
+  classes:
+    # Rough “BATH set” environments.
+    # This is intentionally tiny and editable by the community.
+    BATH_FOLLOW: ["s", "f", "θ"]
+
+  replacements:
+    # eSpeak sometimes emits plain 'a' for TRAP. Your Python normalized that to 'æ'.
+    - from: "a"
+      to: "æ"
+
+    # UK-ish broad BATH:
+    # If eSpeak produces æ in words like "bath/cast/broadcast", push it to ɑː.
+    # This only triggers when the next char after the match is s/f/θ.
+    - from: "æ"
+      to: "ɑː"
+      when:
+        beforeClass: BATH_FOLLOW
+
+    # Safety: if any rhotic NURSE slips in, de-rhoticize for UK baseline.
+    - from: "ɝː"
+      to: "ɜː"
+    - from: "ɝ"
+      to: "ɜ"

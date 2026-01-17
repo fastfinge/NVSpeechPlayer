@@ -1,0 +1,20 @@
+# Slovak (sk)
+
+settings:
+  primaryStressDiv: 1.25
+  secondaryStressDiv: 1.07
+
+normalization:
+  replacements:
+    # Palatalization marker: keep it audible as /j/.
+    - from: "ʲ"
+      to: "j"
+
+    # Safety fallbacks for palatal stops.
+    - from: "ɟ"
+      to: "g"
+    - from: "c"
+      to: "k"
+
+    - from: "ʝ"
+      to: "j"

@@ -1,0 +1,24 @@
+# English (Canada) (en-ca)
+#
+# Note: This file exists because en.yaml is treated as UK baseline
+# in NVSP. Canada is rhotic and much closer to US-style rhotic
+# defaults, so we apply the same overrides as en-us.
+
+settings: {}
+
+normalization:
+  classes:
+    BATH_FOLLOW: ["f", "θ", "s", "ð", "v", "n", "m"]
+
+  replacements:
+    # Force rhotic NURSE.
+    - from: "ɜː"
+      to: "ɝː"
+    - from: "ɜ"
+      to: "ɝ"
+
+    # Undo UK broad BATH.
+    - from: "ɑː"
+      to: "æ"
+      when:
+        beforeClass: "BATH_FOLLOW"

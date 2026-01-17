@@ -1,0 +1,16 @@
+# German (de)
+
+settings:
+  primaryStressDiv: 1.25
+  secondaryStressDiv: 1.07
+
+normalization:
+  replacements:
+    # German /r/ is typically uvular in many modern accents.
+    # eSpeak's IPA can emit alveolar r; normalize to ʁ when possible.
+    - from: "r"
+      to: "ʁ"
+
+    # If you ever get a non-syllabic ɐ̯, normalize to ɐ.
+    - from: "ɐ̯"
+      to: "ɐ"

@@ -1,0 +1,12 @@
+# Hungarian (hu)
+
+settings:
+  primaryStressDiv: 1.25
+  secondaryStressDiv: 1.07
+
+normalization:
+  replacements:
+    # Route long "é" (often output as eː) to NVSP's dedicated vowel ᴇ.
+    # The ː length mark is kept, so duration still works the same.
+    - from: "eː"
+      to: "ᴇː"

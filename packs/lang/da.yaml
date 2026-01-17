@@ -1,0 +1,13 @@
+# Danish (da)
+
+settings:
+  primaryStressDiv: 1.25
+  secondaryStressDiv: 1.07
+
+normalization:
+  replacements:
+    # Mnemonic fallbacks (rare if you're feeding true IPA).
+    - from: "?"
+      to: "ʔ"
+    - from: "R"
+      to: "ʁ"

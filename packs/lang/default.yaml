@@ -1,0 +1,59 @@
+# Base defaults for NV Speech Player frontend.
+#
+# Packs are merged in this order:
+#   default.yaml -> <lang>.yaml -> <lang-region>.yaml -> <lang-region-variant>.yaml
+
+settings:
+  # Timing / stress shaping
+  primaryStressDiv: 1.4
+  secondaryStressDiv: 1.1
+
+  # Stop closure insertion ("click" before stops/affricates)
+  stopClosureMode: vowel-and-cluster
+  stopClosureClusterGapsEnabled: true
+
+  # Length mark (ː) handling
+  lengthenedScale: 1.05
+  lengthenedScaleHu: 1.3
+  applyLengthenedScaleToVowelsOnly: true
+
+  # Output gain defaults
+  defaultPreFormantGain: 1.0
+  defaultOutputGain: 1.5
+
+  # Normalization cleanup
+  stripAllophoneDigits: true
+  stripHyphen: true
+
+  # Tonal languages
+  tonal: false
+  toneDigitsEnabled: true
+  toneContoursMode: absolute
+
+# Global IPA normalizations that are *not* language-specific.
+# These closely match the multi-character replacements in ipa_bestversion.py.
+normalization:
+  preReplacements:
+    # Tie common affricate spellings into the single phonemes in Phonemes.yaml.
+    - from: "tʃ"
+      to: "t͡ʃ"
+    - from: "dʒ"
+      to: "d͡ʒ"
+    - from: "tɕ"
+      to: "t͡ɕ"
+    - from: "dʑ"
+      to: "d͡ʑ"
+    - from: "ts"
+      to: "t͡s"
+    - from: "dz"
+      to: "d͡z"
+
+    # eSpeak mnemonic variants (harmless if you only feed true IPA).
+    - from: "tS"
+      to: "t͡ʃ"
+    - from: "dZ"
+      to: "d͡ʒ"
+    - from: "t͡S"
+      to: "t͡ʃ"
+    - from: "d͡Z"
+      to: "d͡ʒ"

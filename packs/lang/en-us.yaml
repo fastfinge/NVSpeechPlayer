@@ -1,0 +1,32 @@
+# packs/lang/en-us.yaml
+# English (US) overrides layered on top of default.yaml + en.yaml
+
+settings:
+  stopClosureMode: always
+  postStopAspirationEnabled: true
+  englishLongUShortenEnabled: true
+  englishLongUWordFinalScale: 0.80
+
+normalization:
+  classes:
+    BATH_FOLLOW: ["s", "f", "θ"]
+
+  replacements:
+    # Keep TRAP normalization consistent with your old Python behavior.
+    - from: "a"
+      to: "æ"
+
+    # BIG ONE:
+    # eSpeak’s IPA often uses ɜ(ː) for NURSE even in en-us.
+    # Your old Python forced rhotic NURSE here; that’s what you’re missing now.
+    - from: "ɜː"
+      to: "ɝː"
+    - from: "ɜ"
+      to: "ɝ"
+
+    # US narrow BATH (cast/bath/fast, etc):
+    # If eSpeak emits ɑː in these environments, force it back to æ.
+    - from: "ɑː"
+      to: "æ"
+      when:
+        beforeClass: BATH_FOLLOW

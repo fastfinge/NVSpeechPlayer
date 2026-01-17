@@ -1,0 +1,16 @@
+# Swedish (sv)
+
+settings:
+  primaryStressDiv: 1.25
+  secondaryStressDiv: 1.07
+
+# eSpeak Swedish IPA sometimes emits the ɧ sound as "sx".
+# Map the sequence to the single phoneme ɧ.
+normalization:
+  preReplacements:
+    - from: "sx"
+      to: "ɧ"
+
+    # Mnemonic fallback for /ʉ/.
+    - from: "u-"
+      to: "ʉ"

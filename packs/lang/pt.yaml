@@ -1,0 +1,34 @@
+# Portuguese (pt)
+
+settings:
+  primaryStressDiv: 1.25
+  secondaryStressDiv: 1.07
+
+normalization:
+  replacements:
+    # --- Nasal vowels ---
+    # eSpeak pt (--ipa) often emits combining-tilde vowels (e.g. ɐ̃).
+    # Convert them to NVSP's precomposed nasal vowels when available.
+    - from: "ɐ̃ʊ̃"
+      to: "ãᴜ"
+    - from: "ɐ̃"
+      to: "ã"
+    - from: "õ"
+      to: "õ"
+    - from: "ũ"
+      to: "ũ"
+    - from: "ẽ"
+      to: "ẽ"
+    - from: "ĩ"
+      to: "ĩ"
+    - from: "ʊ̃"
+      to: "ᴜ"
+
+    # --- Glides / palatals ---
+    # eSpeak can emit 'y' for the /j/ glide in Portuguese (e.g. mˈɐ̃y).
+    - from: "y"
+      to: "j"
+
+    # Portuguese 'lh' can surface as "lj".
+    - from: "lj"
+      to: "ʎ"

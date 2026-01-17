@@ -1,0 +1,11 @@
+# Romanian (ro)
+
+settings:
+  primaryStressDiv: 1.25
+  secondaryStressDiv: 1.07
+
+normalization:
+  replacements:
+    # Mnemonic fallback: y -> ɨ
+    - from: "y"
+      to: "ɨ"

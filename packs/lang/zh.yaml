@@ -1,0 +1,28 @@
+# Example: Mandarin Chinese (tone numbers 1-5).
+#
+# This is intentionally minimal: it only turns on the tone overlay.
+# You'll still need IPA normalization rules that produce consistent tone markers.
+
+settings:
+  tonal: true
+  # IMPORTANT: if your IPA stream uses digits for tones, do NOT strip digits.
+  stripAllophoneDigits: false
+  toneDigitsEnabled: true
+  toneContoursMode: absolute
+
+# Map tone markers -> pitch contour points (0..100).
+# The frontend interpolates these over voiced phonemes in the syllable.
+#
+# Rough defaults:
+# 1: high level
+# 2: rising
+# 3: low dip (fall-rise)
+# 4: falling
+# 5: neutral
+
+toneContours:
+  "1": [80, 80]
+  "2": [55, 80]
+  "3": [35, 55, 45]
+  "4": [80, 40]
+  "5": [50, 50]
