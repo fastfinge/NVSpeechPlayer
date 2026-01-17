@@ -156,6 +156,11 @@ struct LanguagePack {
   std::string stopClosureMode = "vowel-and-cluster";
   bool stopClosureClusterGapsEnabled = true;
 
+  // If true, allow inserting short closure gaps before stops even after nasals.
+  // This helps keep stops audible in nasal+stop clusters (e.g. Hungarian "pont" -> n+t).
+  // Default false to avoid "clicks" in languages where this sounds unnatural.
+  bool stopClosureAfterNasalsEnabled = false;
+
   // Duration scaling.
   double lengthenedScale = 1.05;
   double lengthenedScaleHu = 1.3;

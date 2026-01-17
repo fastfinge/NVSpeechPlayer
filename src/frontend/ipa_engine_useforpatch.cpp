@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
+#include <type_traits>
 #include <sstream>
 
 namespace nvsp_frontend {
@@ -144,11 +146,13 @@ static bool classContainsNext(const std::unordered_map<std::string, std::vector<
   auto it = classes.find(className);
   if (it == classes.end()) return false;
   if (nextIndex >= text.size()) return false;
-  // Compare by single codepoint for now (good enough for most "before vowel" rules).
-  std::u32string one;
-  one.push_back(text[nextIndex]);
+
+  // Support both single-codepoint and multi-codepoint class members.
+  // This allows pack rules like beforeClass: ["t͡ʃ", "d͡ʒ"] if needed.
   for (const auto& member : it->second) {
-    if (member == one) return true;
+    if (member.empty()) continue;
+    if (nextIndex + member.size() > text.size()) continue;
+    if (text.compare(nextIndex, member.size(), member) == 0) return true;
   }
   return false;
 }
@@ -162,10 +166,14 @@ static bool classContainsPrev(const std::unordered_map<std::string, std::vector<
   if (it == classes.end()) return false;
   if (text.empty()) return false;
   if (prevIndex >= text.size()) return false;
-  std::u32string one;
-  one.push_back(text[prevIndex]);
+
+  // Support both single-codepoint and multi-codepoint class members.
+  // prevIndex is the index of the character immediately before the match.
   for (const auto& member : it->second) {
-    if (member == one) return true;
+    if (member.empty()) continue;
+    if (member.size() > prevIndex + 1) continue;
+    const size_t start = (prevIndex + 1) - member.size();
+    if (text.compare(start, member.size(), member) == 0) return true;
   }
   return false;
 }
@@ -181,6 +189,44 @@ static bool isWordBoundaryAfter(const std::u32string& text, size_t posAfter) {
   return text[posAfter] == U' ';
 }
 
+static inline bool isTieBar(char32_t c) {
+  return c == U'͡' || c == U'͜';
+}
+
+// Match a pattern at text[pos], treating IPA tie bars as optional on both sides.
+// This lets pack rules written as "a͡ɪ" match both "a͡ɪ" and "aɪ" (and similarly for affricates).
+// outConsumed is the number of codepoints consumed from *text*.
+static bool matchAtLooseTie(const std::u32string& text, size_t pos,
+                            const std::u32string& pat,
+                            size_t& outConsumed) {
+  outConsumed = 0;
+  size_t t = pos;
+  size_t p = 0;
+
+  while (p < pat.size()) {
+    // Skip tie bars in the pattern.
+    if (p < pat.size() && isTieBar(pat[p])) {
+      ++p;
+      continue;
+    }
+
+    // Skip tie bars in the text.
+    while (t < text.size() && isTieBar(text[t])) {
+      ++t;
+      ++outConsumed;
+    }
+
+    if (t >= text.size()) return false;
+    if (text[t] != pat[p]) return false;
+
+    ++t;
+    ++p;
+    ++outConsumed;
+  }
+
+  return true;
+}
+
 static std::u32string chooseReplacementTarget(const PackSet& pack, const std::vector<std::u32string>& candidates) {
   for (const auto& c : candidates) {
     if (c.empty()) return c;
@@ -191,8 +237,39 @@ static std::u32string chooseReplacementTarget(const PackSet& pack, const std::ve
 }
 
 static void applyRules(std::u32string& text, const PackSet& pack, const std::vector<ReplacementRule>& rules) {
+  const bool textHasTie = (text.find(U'͡') != std::u32string::npos) || (text.find(U'͜') != std::u32string::npos);
+
   for (const auto& rule : rules) {
     if (rule.from.empty()) continue;
+
+    const bool patHasTie = (rule.from.find(U'͡') != std::u32string::npos) || (rule.from.find(U'͜') != std::u32string::npos);
+    const bool useLooseTie = (rule.from.size() > 1) && (textHasTie || patHasTie);
+
+    // Fast skip: only safe when we can rely on direct substring search.
+    // If tie bars are involved, a pattern like "a͡ɪ" should also match "aɪ", so
+    // we can't skip purely on text.find(rule.from).
+    if (!useLooseTie) {
+      if (text.find(rule.from) == std::u32string::npos) {
+        continue;
+      }
+    } else if (patHasTie) {
+      // If the pattern has a tie bar, also check the no-tie variant.
+      std::u32string noTie;
+      noTie.reserve(rule.from.size());
+      for (char32_t c : rule.from) {
+        if (!isTieBar(c)) noTie.push_back(c);
+      }
+      if (text.find(rule.from) == std::u32string::npos && (!noTie.empty() && text.find(noTie) == std::u32string::npos)) {
+        continue;
+      }
+    } else {
+      // Pattern has no tie bar but the text might. We can't cheaply skip in the general case.
+      // Still safe to skip for single-codepoint patterns.
+      if (rule.from.size() == 1 && text.find(rule.from) == std::u32string::npos) {
+        continue;
+      }
+    }
+
     const auto to = chooseReplacementTarget(pack, rule.to);
 
     std::u32string out;
@@ -200,9 +277,25 @@ static void applyRules(std::u32string& text, const PackSet& pack, const std::vec
 
     size_t i = 0;
     while (i < text.size()) {
-      if (i + rule.from.size() <= text.size() && text.compare(i, rule.from.size(), rule.from) == 0) {
+      bool matched = false;
+      size_t matchLen = 0; // number of codepoints consumed from text
+
+      if (!useLooseTie) {
+        if (i + rule.from.size() <= text.size() && text.compare(i, rule.from.size(), rule.from) == 0) {
+          matched = true;
+          matchLen = rule.from.size();
+        }
+      } else {
+        size_t consumed = 0;
+        if (matchAtLooseTie(text, i, rule.from, consumed)) {
+          matched = true;
+          matchLen = consumed;
+        }
+      }
+
+      if (matched) {
         const size_t matchStart = i;
-        const size_t matchEnd = i + rule.from.size();
+        const size_t matchEnd = i + matchLen;
 
         bool ok = true;
         if (rule.when.atWordStart && !isWordBoundaryBefore(text, matchStart)) ok = false;
@@ -211,7 +304,11 @@ static void applyRules(std::u32string& text, const PackSet& pack, const std::vec
           ok = classContainsNext(pack.lang.classes, rule.when.beforeClass, text, matchEnd);
         }
         if (ok && !rule.when.afterClass.empty()) {
-          ok = classContainsPrev(pack.lang.classes, rule.when.afterClass, text, matchStart - 1);
+          if (matchStart == 0) {
+            ok = false;
+          } else {
+            ok = classContainsPrev(pack.lang.classes, rule.when.afterClass, text, matchStart - 1);
+          }
         }
 
         if (ok) {
@@ -248,12 +345,13 @@ static void applyAliases(std::u32string& text, const PackSet& pack) {
 static std::u32string normalizeIpaText(const PackSet& pack, const std::string& ipaUtf8) {
   std::u32string t = utf8ToU32(ipaUtf8);
 
+  // Normalize tie bar variants early so pack rules can match reliably.
+  replaceAll(t, U"͜", U"͡");
+
   // 1) Pack pre-replacements (lets you preserve info before we strip chars like '-').
   applyRules(t, pack, pack.lang.preReplacements);
 
   // 2) Basic cleanup, mirroring ipa_convert.py defaults.
-  // Normalize tie bar variants.
-  replaceAll(t, U"͜", U"͡");
   // Remove ZWJ/ZWNJ.
   replaceAll(t, U"‍", U"");
   replaceAll(t, U"‌", U"");
@@ -290,7 +388,15 @@ static std::u32string normalizeIpaText(const PackSet& pack, const std::string& i
   replaceAll(t, U"'", U"ˈ");
   replaceAll(t, U",", U"ˌ");
   replaceAll(t, U":", U"ː");
-
+  // --- IPA normalisation / fallbacks (match legacy ipa_bestversion.py) ---
+  // eSpeak's espeak_TextToPhonemes() IPA mode frequently uses tied sequences
+  // to represent syllabic /-l/ endings (e.g. "level" -> ...ə͡l, "cancel" -> ...ə͡l).
+  // If we treat these as a single phoneme key, the /l/ can disappear entirely.
+  // The legacy Python pipeline normalized these into schwa + l.
+  replaceAll(t, U"l̩", U"əl");
+  replaceAll(t, U"ɫ̩", U"əl");
+  replaceAll(t, U"ə͡l", U"əl");
+  replaceAll(t, U"ʊ͡l", U"əl");
   // Allophone digits (eSpeak often uses '2').
   if (pack.lang.stripAllophoneDigits) {
     // Keep 1-5 for tone digits if tonal.
@@ -1005,10 +1111,6 @@ static bool parseToTokens(const PackSet& pack, const std::u32string& text, std::
       return lastIndex >= 0 && lastIndex < static_cast<int>(outTokens.size());
     };
 
-    auto lastTok = [&]() -> Token* {
-      return haveLast() ? &outTokens[lastIndex] : nullptr;
-    };
-
     // Syllable start detection.
     if (haveLast()) {
       Token& last = outTokens[lastIndex];
@@ -1022,10 +1124,15 @@ static bool parseToTokens(const PackSet& pack, const std::u32string& text, std::
     }
 
     // Post-stop aspiration insertion.
+    // Avoid keeping references into outTokens across push_back() (brittle if this code grows).
     if (lang.postStopAspirationEnabled && haveLast()) {
-      Token& last = outTokens[lastIndex];
-      if (tokenIsStop(last) && !tokenIsVoiced(last) && tokenIsVoiced(t) &&
-          !tokenIsStop(t) && !tokenIsAfricate(t)) {
+      const bool lastIsStop = tokenIsStop(outTokens[lastIndex]);
+      const bool lastIsVoiced = tokenIsVoiced(outTokens[lastIndex]);
+      const bool curIsVoiced = tokenIsVoiced(t);
+      const bool curIsStop = tokenIsStop(t);
+      const bool curIsAfricate = tokenIsAfricate(t);
+
+      if (lastIsStop && !lastIsVoiced && curIsVoiced && !curIsStop && !curIsAfricate) {
         const PhonemeDef* asp = findPhoneme(pack, lang.postStopAspirationPhoneme);
         if (asp) {
           Token a;
@@ -1067,7 +1174,9 @@ static bool parseToTokens(const PackSet& pack, const std::u32string& text, std::
           const bool prevIsStopLike = tokenIsStop(prev) || tokenIsAfricate(prev);
           const bool prevIsLiquidLike = tokenIsLiquid(prev) || tokenIsSemivowel(prev);
           const bool prevIsFric = tokenIsFricativeLike(prev);
-          if (!prevIsNasal && (prevIsFric || prevIsStopLike || prevIsLiquidLike)) {
+          const bool allowAfterNasals = lang.stopClosureAfterNasalsEnabled;
+          if ((!prevIsNasal || allowAfterNasals) &&
+              (prevIsFric || prevIsStopLike || prevIsLiquidLike || (allowAfterNasals && prevIsNasal))) {
             needGap = true;
             clusterGap = true;
           }
@@ -1172,19 +1281,32 @@ void emitFrames(
   (void)pack;
   if (!cb) return;
 
+  // We intentionally treat nvspFrontend_Frame as a dense sequence of doubles.
+  // Enforce that assumption at compile time so future edits fail loudly.
+  static_assert(sizeof(nvspFrontend_Frame) == sizeof(double) * kFrameFieldCount,
+                "nvspFrontend_Frame must remain exactly kFrameFieldCount doubles with no padding");
+  static_assert(std::is_standard_layout<nvspFrontend_Frame>::value,
+                "nvspFrontend_Frame must remain standard-layout");
+  static_assert(std::is_trivially_copyable<nvspFrontend_Frame>::value,
+                "nvspFrontend_Frame must remain trivially copyable");
+
   for (const Token& t : tokens) {
     if (t.silence || !t.def) {
       cb(userData, nullptr, t.durationMs, t.fadeMs, userIndexBase);
       continue;
     }
 
-    nvspFrontend_Frame frame{};
-    // Set only the fields that exist in this token.
+    // Build a dense array of doubles and memcpy into the frame.
+    // This avoids UB from treating a struct as an array via pointer arithmetic.
+    double buf[kFrameFieldCount] = {};
+    const std::uint64_t mask = t.setMask;
     for (int f = 0; f < kFrameFieldCount; ++f) {
-      if ((t.setMask & (1ull << f)) == 0) continue;
-      // frame has the same field order as our FieldId enum.
-      reinterpret_cast<double*>(&frame)[f] = t.field[f];
+      if ((mask & (1ull << f)) == 0) continue;
+      buf[f] = t.field[f];
     }
+
+    nvspFrontend_Frame frame;
+    std::memcpy(&frame, buf, sizeof(frame));
 
     cb(userData, &frame, t.durationMs, t.fadeMs, userIndexBase);
   }

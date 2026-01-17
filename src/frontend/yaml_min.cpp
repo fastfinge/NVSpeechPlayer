@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
+#include <locale>
 #include <sstream>
 
 namespace nvsp_frontend::yaml_min {
@@ -365,15 +366,23 @@ bool Node::asBool(bool& out) const {
 
 bool Node::asNumber(double& out) const {
   if (!isScalar()) return false;
-  char* end = nullptr;
-  errno = 0;
-  double v = std::strtod(scalar.c_str(), &end);
-  if (end == scalar.c_str() || errno != 0) return false;
-  // Require full parse.
-  while (*end) {
-    if (!std::isspace(static_cast<unsigned char>(*end))) return false;
-    ++end;
-  }
+
+  // Locale-independent number parsing.
+  // NVDA may set the process numeric locale to one that uses ',' as a decimal
+  // separator (Hungarian, Polish, Spanish, etc.). YAML requires '.' decimals.
+  // Using strtod/atof would respect the process locale and mis-parse values
+  // like '0.6' as '0', effectively zeroing voicing and causing "whisper".
+  std::istringstream iss(scalar);
+  iss.imbue(std::locale::classic());
+
+  iss >> std::ws;
+  double v = 0.0;
+  iss >> v;
+  if (!iss) return false;
+
+  iss >> std::ws;
+  if (!iss.eof()) return false;
+
   out = v;
   return true;
 }

@@ -272,6 +272,7 @@ static void mergeSettings(LanguagePack& lp, const yaml_min::Node& settings) {
 
   getStr("stopClosureMode", lp.stopClosureMode);
   getBool("stopClosureClusterGapsEnabled", lp.stopClosureClusterGapsEnabled);
+  getBool("stopClosureAfterNasalsEnabled", lp.stopClosureAfterNasalsEnabled);
 
   getNum("lengthenedScale", lp.lengthenedScale);
   getNum("lengthenedScaleHu", lp.lengthenedScaleHu);
