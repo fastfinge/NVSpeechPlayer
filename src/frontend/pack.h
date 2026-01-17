@@ -156,22 +156,31 @@ struct LanguagePack {
   std::string stopClosureMode = "vowel-and-cluster";
   bool stopClosureClusterGapsEnabled = true;
 
-  // Segment/utterance stitching.
-  // NVDA often supplies UI speech in multiple chunks (label/role/value/etc.).
-  // When chunks are synthesized separately, phonological context is lost at the
-  // boundary and some languages can sound "glued" together. These optional
-  // values insert a tiny silence frame BETWEEN consecutive nvspFrontend_queueIPA
-  // calls on the same handle.
-  //
-  // Units are milliseconds at speed=1.0; the frontend divides by speed.
-  // Set to 0 to disable.
-  double segmentBoundaryGapMs = 0.0;
-  double segmentBoundaryFadeMs = 0.0;
-
   // If true, allow inserting short closure gaps before stops even after nasals.
   // This helps keep stops audible in nasal+stop clusters (e.g. Hungarian "pont" -> n+t).
   // Default false to avoid "clicks" in languages where this sounds unnatural.
   bool stopClosureAfterNasalsEnabled = false;
+
+  // Stop closure timing (ms at speed=1.0; divided by current speed).
+  // These control the duration/fade of inserted silence frames (preStopGap)
+  // before stops/affricates.
+  double stopClosureVowelGapMs = 41.0;
+  double stopClosureVowelFadeMs = 10.0;
+  double stopClosureClusterGapMs = 22.0;
+  double stopClosureClusterFadeMs = 4.0;
+
+  // Optional: if >0, override cluster gap timing specifically at word boundaries
+  // (when the stop/affricate is at word start).
+  double stopClosureWordBoundaryClusterGapMs = 0.0;
+  double stopClosureWordBoundaryClusterFadeMs = 0.0;
+
+  // Segment boundary timing (ms at speed=1.0; divided by current speed).
+  // If non-zero, the frontend inserts a tiny silence frame between consecutive
+  // nvspFrontend_queueIPA calls on the same handle. This helps when callers
+  // stitch UI speech from multiple chunks (label / role / value), where
+  // transitions can otherwise feel abrupt in some languages.
+  double segmentBoundaryGapMs = 0.0;
+  double segmentBoundaryFadeMs = 0.0;
 
   // Duration scaling.
   double lengthenedScale = 1.05;

@@ -14,11 +14,11 @@ struct Handle {
   std::string packDir;
   PackSet pack;
   bool packLoaded = false;
+  // True once we have emitted at least one chunk of speech on this handle.
+  // Used to optionally insert a tiny silence between consecutive queueIPA calls.
+  bool streamHasSpeech = false;
   std::string langTag;
   std::string lastError;
-  // True after at least one successful queueIPA call emitted frames.
-  // Used to insert an optional inter-segment gap between consecutive calls.
-  bool streamHasSpeech = false;
   std::mutex mu;
 };
 
@@ -72,9 +72,10 @@ NVSP_FRONTEND_API int nvspFrontend_setLanguage(nvspFrontend_handle_t handle, con
 
   h->pack = std::move(pack);
   h->packLoaded = true;
-  h->langTag = normalizeLangTag(lang);
-  // Treat language change as a stream reset.
+  // Treat language change as the start of a new stream, so we don't
+  // insert a segment boundary gap before the first chunk in the new language.
   h->streamHasSpeech = false;
+  h->langTag = normalizeLangTag(lang);
   return 1;
 }
 
@@ -123,22 +124,21 @@ NVSP_FRONTEND_API int nvspFrontend_queueIPA(
     return 0;
   }
 
-  // Optional: Insert a tiny silence between consecutive queueIPA calls.
-  // This helps with UI speech where NVDA supplies separate chunks (label/role/value)
-  // and the synthesizer would otherwise transition abruptly with no boundary.
-  //
-  // Units in YAML are ms at speed=1.0; we divide by speed.
-  const double effSpeed = (speed <= 0.0) ? 1.0 : speed;
+  // Optional: insert a short silence between consecutive queueIPA calls.
+  // This helps when callers stitch UI speech from multiple chunks.
   if (cb && h->streamHasSpeech && !tokens.empty()) {
-    const double gap = h->pack.lang.segmentBoundaryGapMs;
-    const double fade = h->pack.lang.segmentBoundaryFadeMs;
-    if (gap > 0.0) {
-      cb(userData, nullptr, gap / effSpeed, (fade > 0.0 ? fade / effSpeed : 0.0), -1);
+    const double gapMs = h->pack.lang.segmentBoundaryGapMs;
+    const double fadeMs = h->pack.lang.segmentBoundaryFadeMs;
+    if (gapMs > 0.0 || fadeMs > 0.0) {
+      const double spd = (speed > 0.0) ? speed : 1.0;
+      cb(userData, nullptr, gapMs / spd, fadeMs / spd, userIndexBase);
     }
   }
 
   emitFrames(h->pack, tokens, userIndexBase, cb, userData);
-  if (!tokens.empty()) h->streamHasSpeech = true;
+  if (!tokens.empty()) {
+    h->streamHasSpeech = true;
+  }
   return 1;
 }
 
