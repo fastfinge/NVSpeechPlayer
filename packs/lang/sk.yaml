@@ -4,17 +4,28 @@ settings:
   primaryStressDiv: 1.25
   secondaryStressDiv: 1.07
 
+  # Slovak vowel length is phonemic.
+  lengthenedScale: 1.4
+
 normalization:
   replacements:
     # Palatalization marker: keep it audible as /j/.
     - from: "ʲ"
       to: "j"
 
-    # Safety fallbacks for palatal stops.
+    # Syllabic liquids (r̩, l̩) are common in Slovak (e.g. "vlk", "krk").
+    # Approximate them as schwa + liquid so they remain audible.
+    - from: "r̩"
+      to: "ər"
+    - from: "l̩"
+      to: "əl"
+
+    # Safety fallbacks for palatal stops (ɟ, c) if they appear in IPA.
+    # Approximate as d+j / t+j so they don't sound velar.
     - from: "ɟ"
-      to: "g"
+      to: "dj"
     - from: "c"
-      to: "k"
+      to: "tj"
 
     - from: "ʝ"
       to: "j"

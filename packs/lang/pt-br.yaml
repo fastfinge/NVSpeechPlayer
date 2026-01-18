@@ -2,3 +2,21 @@
 # Inherits from: default.yaml -> pt.yaml
 
 settings: {}
+
+normalization:
+  replacements:
+    # eSpeak pt-br emits "y" for the raised final "e" (roughly like [i~ɪ]).
+    # But after nasal "ã" it behaves like a glide (mãe, pães).
+    - from: "ãy"
+      to: "ãj"
+    - from: "y"
+      to: "i"
+
+    # eSpeak pt-br often uses "æ" for word-final unstressed "a" (casa, feira).
+    # Map it to a central a-like vowel so it doesn't sound like English "cat".
+    - from: "æ"
+      to: "a"
+
+    # In Brazilian Portuguese, "r" in clusters and word-final is closer to a tap.
+    - from: "r"
+      to: "ɾ"

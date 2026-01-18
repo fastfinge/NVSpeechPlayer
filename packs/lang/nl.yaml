@@ -4,8 +4,16 @@ settings:
   primaryStressDiv: 1.25
   secondaryStressDiv: 1.07
 
+  # Dutch has contrastive vowel length; make ː more audible.
+  lengthenedScale: 1.3
+
 normalization:
   replacements:
+    # eSpeak Dutch often uses the labiodental approximant ʋ.
+    # NVSP doesn't model it separately yet; approximate as /v/.
+    - from: "ʋ"
+      to: "v"
+
     # Mnemonic fallback: Q -> ɣ
     - from: "Q"
       to: "ɣ"

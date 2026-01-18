@@ -12,6 +12,9 @@ settings:
   englishLongUShortenEnabled: true
   englishLongUWordFinalScale: 0.80
 
+  # Keep length scaling close to the global default.
+  # Over-lengthening can make clusters (like "-dcast") sound overly separated.
+
 normalization:
   classes:
     # Rough “BATH set” environments.
@@ -30,6 +33,12 @@ normalization:
       to: "ɑː"
       when:
         beforeClass: BATH_FOLLOW
+
+    # UK THOUGHT: use a slightly more rounded /ɔː/ variant than the default.
+    # IMPORTANT: Use a single-codepoint internal key ("ᴏ") so tokenization
+    # stays stable (multi-letter keys can be mis-tokenized).
+    - from: "ɔː"
+      to: "ᴏː"
 
     # Safety: if any rhotic NURSE slips in, de-rhoticize for UK baseline.
     - from: "ɝː"

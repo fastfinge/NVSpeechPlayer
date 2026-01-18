@@ -8,11 +8,30 @@ settings:
   stopClosureClusterGapsEnabled: false
 
 normalization:
+  preReplacements:
+    # eSpeak bg often uses plain sequences for affricates.
+    - from: "ts"
+      to: "t͡s"
+    - from: "tʃ"
+      to: "t͡ʃ"
+    - from: "dʒ"
+      to: "d͡ʒ"
+
+    # Bulgarian does not have phonemic vowel length. eSpeak occasionally emits
+    # length marks (e.g. word-final iː). Strip them to avoid unnatural stretching.
+    - from: "ː"
+      to: ""
+
   replacements:
     # eSpeak bg (--ipa) commonly emits schwa for the vowel written "ъ".
     # In NVSP we keep this distinct as ɤ.
     - from: "ə"
       to: "ɤ"
+
+    # Bulgarian /e/ is typically [ɛ] (open-mid) rather than [e].
+    # eSpeak uses the plain 'e' symbol, so remap it to our 'ɛ' phoneme.
+    - from: "e"
+      to: "ɛ"
 
     # Slavic palatalization marker: keep it audible as a /j/ glide.
     - from: "ʲ"

@@ -1,12 +1,43 @@
-# Hungarian (hu)
+# Hungarian.
 
 settings:
+  # Stressed syllables: lighter slow-down than English.
   primaryStressDiv: 1.25
   secondaryStressDiv: 1.07
 
+  # Keep stops audible in nasal+stop clusters (e.g. "pont" -> n+t).
+  # This adds a short closure before stops after nasals, which helps at higher rates.
+  stopClosureAfterNasalsEnabled: true
+
+  # Hungarian has phonemic length (short vs long vowels).
+  # Use a larger scale when we see ː on Hungarian phonemes.
+  # NOTE: 1.5 was a bit too long in practice; 1.45 keeps contrast but avoids
+  # over-holding long vowels like /eː/ ("é").
+  lengthenedScaleHu: 1.45
+
+  # Hungarian short 'a' (written "a") tends to sound over-held if left at the
+  # global vowel timing. The frontend has a legacy compat switch for this.
+  huShortAVowelEnabled: true
+  huShortAVowelKey: "ᴒ"
+  huShortAVowelScale: 0.80
+
 normalization:
   replacements:
-    # Route long "é" (often output as eː) to NVSP's dedicated vowel ᴇ.
-    # The ː length mark is kept, so duration still works the same.
+    # Hungarian short 'a' (written "a") is closer to /ɒ/ than /ɑ/.
+    # eSpeak's hu voice often outputs "ɑ" here; route it to NVSP's
+    # dedicated short-a vowel key.
+    - from: "ɑ"
+      to: "ᴒ"
+
+    # Hungarian "é" is a long /eː/ that should be a clean monophthong.
+    # Map it to a slightly more open internal variant so it doesn't drift toward
+    # an English "A"-like quality.
     - from: "eː"
       to: "ᴇː"
+
+    # eSpeak can emit palatal stops for Hungarian "ty" (/c/) and "gy" (/ɟ/).
+    # NVSP doesn't model these as distinct consonants yet, so fall back.
+    - from: "c"
+      to: "k"
+    - from: "ɟ"
+      to: "g"

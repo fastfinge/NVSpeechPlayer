@@ -11,10 +11,18 @@ settings:
   # Stop closure insertion ("click" before stops/affricates)
   stopClosureMode: vowel-and-cluster
   stopClosureClusterGapsEnabled: true
-
+  stopClosureClusterGapMs: 26
+  segmentBoundaryGapMs: 18
+  segmentBoundaryFadeMs: 4
+  # Default is true even if you omit it.
+  # Set false only if you explicitly want pauses even between vowel→vowel.
+  segmentBoundarySkipVowelToVowel: true
+  # If a language relies on lots of vowel-hiatus without explicit syllable boundaries, keep these off (or only enable autoTieDiphthongs and leave the semivowel conversion off).
+  autoTieDiphthongs: true
+  autoDiphthongOffglideToSemivowel: true  
   # Length mark (ː) handling
   lengthenedScale: 1.05
-  lengthenedScaleHu: 1.3
+  lengthenedScaleHu: 1.4
   applyLengthenedScaleToVowelsOnly: true
 
   # Output gain defaults

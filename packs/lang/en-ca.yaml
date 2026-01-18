@@ -4,13 +4,18 @@
 # in NVSP. Canada is rhotic and much closer to US-style rhotic
 # defaults, so we apply the same overrides as en-us.
 
-settings: {}
+settings:
+  # Canada is largely closer to US timing than the UK baseline in en.yaml.
+  lengthenedScale: 1.05
 
 normalization:
   classes:
     BATH_FOLLOW: ["f", "θ", "s", "ð", "v", "n", "m"]
 
   replacements:
+    # Undo the UK THOUGHT tweak from en.yaml (en.yaml maps ɔː -> ᴏː).
+    - from: "ᴏ"
+      to: "ɔ"
     # Force rhotic NURSE.
     - from: "ɜː"
       to: "ɝː"

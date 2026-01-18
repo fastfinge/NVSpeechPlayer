@@ -14,3 +14,22 @@ normalization:
     # Some eSpeak outputs use plain 'y' for /ɨ/.
     - from: "y"
       to: "ɨ"
+
+    # eSpeak Polish reduces many unstressed /a/ to ɐ, but Polish doesn't really
+    # do vowel reduction like that. Keep it as a clearer /a/.
+    - from: "ɐ"
+      to: "a"
+
+    # eSpeak writes Polish cz/dż as tʃ/dʒ (which default.yaml turns into t͡ʃ/d͡ʒ).
+    # Polish cz/dż are typically retroflex t͡ʂ/d͡ʐ.
+    - from: "t͡ʃ"
+      to: "t͡ʂ"
+    - from: "d͡ʒ"
+      to: "d͡ʐ"
+
+    # eSpeak approximates Polish retroflex sibilants using ʃ/ʒ.
+    # Map them to Polish-style ʂ/ʐ to better match the language.
+    - from: "ʃ"
+      to: "ʂ"
+    - from: "ʒ"
+      to: "ʐ"

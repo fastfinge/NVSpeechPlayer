@@ -7,7 +7,19 @@ settings:
   englishLongUShortenEnabled: true
   englishLongUWordFinalScale: 0.80
 
+  # US vowels tend to be shorter than the UK baseline in en.yaml.
+  # Keep the global default scale here.
+  lengthenedScale: 1.05
+
 normalization:
+  preReplacements:
+    # Protect PRICE/MOUTH diphthongs from broad TRAP rules (e.g. five/nine/out).
+    # With tie-insensitive rule matching in the frontend, these match both 'aɪ' and 'a͡ɪ'.
+    - from: "a͡ɪ"
+      to:   "ɑ͡ɪ"
+    - from: "a͡ʊ"
+      to:   "ɑ͡ʊ"
+
   classes:
     BATH_FOLLOW: ["s", "f", "θ"]
 
@@ -30,3 +42,7 @@ normalization:
       to: "æ"
       when:
         beforeClass: BATH_FOLLOW
+
+    # Undo the UK THOUGHT tweak from en.yaml (en.yaml maps ɔː -> ᴏː).
+    - from: "ᴏ"
+      to: "ɔ"

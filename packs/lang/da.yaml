@@ -6,6 +6,10 @@ settings:
 
 normalization:
   replacements:
+    # eSpeak da sometimes outputs Greek epsilon (ε) where IPA would normally use ɛ.
+    - from: "ε"
+      to: "ɛ"
+
     # Mnemonic fallbacks (rare if you're feeding true IPA).
     - from: "?"
       to: "ʔ"

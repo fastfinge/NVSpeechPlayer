@@ -4,6 +4,10 @@ settings:
   primaryStressDiv: 1.25
   secondaryStressDiv: 1.07
 
+  # Smooth vowel-to-vowel transitions inside diphthongs ("ei", "ui", "au", ...).
+  # This relies on the frontend option you added.
+  segmentBoundarySkipVowelToVowel: true
+
 normalization:
   replacements:
     # --- Nasal vowels ---
@@ -24,11 +28,24 @@ normalization:
     - from: "ʊ̃"
       to: "ᴜ"
 
-    # --- Glides / palatals ---
-    # eSpeak can emit 'y' for the /j/ glide in Portuguese (e.g. mˈɐ̃y).
-    - from: "y"
-      to: "j"
+    # --- Diphthongs ---
+    # Make the offglide a real glide so it is more audible and doesn't sound like two vowels.
+    - from: "eɪ"
+      to: "ej"
+    - from: "oɪ"
+      to: "oj"
+    - from: "uɪ"
+      to: "uj"
+    - from: "aʊ"
+      to: "aw"
 
+    # --- R cleanup ---
+    # eSpeak pt-pt sometimes emits ɹ (English-like) for /r/ in clusters and word-final.
+    # Replace it with a tap so it doesn't sound English.
+    - from: "ɹ"
+      to: "ɾ"
+
+    # --- Palatals ---
     # Portuguese 'lh' can surface as "lj".
     - from: "lj"
       to: "ʎ"

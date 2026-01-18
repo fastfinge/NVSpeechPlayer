@@ -5,6 +5,24 @@ settings:
   secondaryStressDiv: 1.07
 
 normalization:
+  # eSpeak (classic) Romanian IPA frequently uses plain two-character sequences
+  # for affricates (ts/tʃ/dʒ) rather than tie-bar forms. We map them to the
+  # dedicated affricate phonemes so timing comes out more naturally.
+  preReplacements:
+    - from: "ts"
+      to: "t͡s"
+    - from: "tʃ"
+      to: "t͡ʃ"
+    - from: "dʒ"
+      to: "d͡ʒ"
+
+    # Romanian â/î often surfaces as /ɨ/ with a glide; eSpeak sometimes writes
+    # these as yɪ / yʊ sequences. Approximate with /ɨj/ and /ɨu/.
+    - from: "yɪ"
+      to: "ɨj"
+    - from: "yʊ"
+      to: "ɨu"
+
   replacements:
     # Mnemonic fallback: y -> ɨ
     - from: "y"
