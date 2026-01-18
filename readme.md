@@ -146,6 +146,103 @@ normalization:
         beforeClass: BATH_FOLLOW
 ```
 
+### Language pack settings reference
+Below is a reference for language pack `settings` values used by the frontend.
+
+#### Stress and timing
+- `primaryStressDiv` (number, default `1.4`): Slows down the syllable carrying primary stress. Higher = more slowdown.
+- `secondaryStressDiv` (number, default `1.1`): Slows down secondary stress syllables.
+
+#### Stop closure insertion
+These settings control the short “silence gap” inserted before stops/affricates (helps clarity, especially for consonant clusters).
+- `stopClosureMode` (string, default `"vowel-and-cluster"`): One of:
+  - `"always"`: insert a closure gap before every stop/affricate (clearest, can sound clicky)
+  - `"after-vowel"`: only after vowels
+  - `"vowel-and-cluster"`: after vowels, and also in some clusters (balanced)
+  - `"none"`: never insert closure gaps
+- `stopClosureClusterGapsEnabled` (bool, default `true`): Enables the cluster part of `"vowel-and-cluster"`.
+- `stopClosureAfterNasalsEnabled` (bool, default `false`): If true, allows closure gaps before stops even after nasals. Helpful when nasal+stop clusters swallow the stop at higher rates.
+
+#### Stop closure gap timing (ms at speed=1.0)
+- `stopClosureVowelGapMs` (number, default `41.0`)
+- `stopClosureVowelFadeMs` (number, default `10.0`)
+  - Duration/fade of closure gaps inserted after vowels.
+- `stopClosureClusterGapMs` (number, default `22.0`)
+- `stopClosureClusterFadeMs` (number, default `4.0`)
+  - Duration/fade of closure gaps inserted in clusters.
+- `stopClosureWordBoundaryClusterGapMs` (number, default `0.0`)
+- `stopClosureWordBoundaryClusterFadeMs` (number, default `0.0`)
+  - If set (>0), overrides the cluster gap timing only when the stop/affricate is at a word boundary (word start).
+
+#### Segment boundary timing (between chunks)
+These settings help when callers stitch speech from multiple chunks (common in NVDA UI speech: label / role / value).
+- `segmentBoundaryGapMs` (number, default `0.0`)
+- `segmentBoundaryFadeMs` (number, default `0.0`)
+  - If non-zero, inserts a short silence frame between consecutive frontend queue calls on the same handle.
+
+#### Post-stop aspiration insertion (English-style)
+- `postStopAspirationEnabled` (bool, default `false`): Inserts a short aspiration phoneme after unvoiced stops in specific contexts.
+- `postStopAspirationPhoneme` (string/IPA key, default `"h"`): Which phoneme key to insert for aspiration.
+
+#### Length mark handling (ː)
+- `lengthenedScale` (number, default `1.05`): Duration multiplier when a phoneme is lengthened with ː.
+- `lengthenedScaleHu` (number, default `1.3`): Hungarian-specific length scaling (used by legacy behavior).
+- `applyLengthenedScaleToVowelsOnly` (bool, default `true`): If true, ː only lengthens vowels.
+
+#### Language-specific duration tweaks
+These are “compat switches” for behavior that existed in the legacy Python pipeline.
+- `huShortAVowelEnabled` (bool, default `true`)
+- `huShortAVowelKey` (string/IPA key, default `"ᴒ"`)
+- `huShortAVowelScale` (number, default `0.85`): Scales Hungarian short “a” timing (using the phoneme key you map for it).
+- `englishLongUShortenEnabled` (bool, default `true`)
+- `englishLongUKey` (string/IPA key, default `"u"`)
+- `englishLongUWordFinalScale` (number, default `0.80`): Shortens English long /uː/ in word-final position.
+
+#### Default frame values (applied unless phoneme sets them)
+- `defaultPreFormantGain` (number, default `1.0`)
+- `defaultOutputGain` (number, default `1.5`)
+- `defaultVibratoPitchOffset` (number, default `0.0`)
+- `defaultVibratoSpeed` (number, default `0.0`)
+- `defaultVoiceTurbulenceAmplitude` (number, default `0.0`)
+- `defaultGlottalOpenQuotient` (number, default `0.0`)
+
+#### Normalization cleanup
+- `stripAllophoneDigits` (bool, default `true`): Removes eSpeak allophone digits from IPA streams (disable for tonal digit languages if needed).
+- `stripHyphen` (bool, default `true`): Removes hyphens in IPA streams.
+
+#### Tonal language support
+- `tonal` (bool, default `false`): Enables tone parsing / tone contours.
+- `toneDigitsEnabled` (bool, default `true`): Allows digits 1–5 as tone markers.
+- `toneContoursMode` (string, default `"absolute"`): How tone contour points are interpreted:
+  - `"absolute"`: points are absolute 0–100 pitch-percent values
+  - `"relative"`: points are offsets from the syllable baseline
+- `toneContoursAbsolute` (bool, default `true`): Low-level switch used by the code; `toneContoursMode` is the recommended YAML knob.
+
+#### Other pack sections (not in settings)
+`normalization`:
+- `aliases`: map one IPA key to another (single-token remap)
+- `classes`: named sets used by `when: beforeClass/afterClass`
+- `preReplacements`: ordered replacements applied early
+- `replacements`: ordered replacements applied after `preReplacements`
+- Each replacement can have an optional `when`:
+  - `atWordStart`: true/false
+  - `atWordEnd`: true/false
+  - `beforeClass`: NAME
+  - `afterClass`: NAME
+
+`transforms`:
+- Rules that match phonemes by properties (`isVowel`, `isStop`, etc.) and then modify fields:
+  - `set`: set field values
+  - `scale`: multiply field values
+  - `add`: add offsets to fields
+
+`intonation`:
+- Clause-type pitch shapes keyed by punctuation (example keys: `.`, `?`, `!`, `:`, `;`, `,`)
+- Supports `headSteps` and other percent parameters (`preHeadStart`, `headStart`, etc.)
+
+`toneContours`:
+- Tone contour definitions (tone string → list of pitch-percent points)
+
 ## Legacy Python files (kept for reference)
 `ipa.py` and `data.py` still live alongside the repo for now, but they are no longer the runtime path for NVDA.
 
