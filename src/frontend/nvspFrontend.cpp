@@ -17,6 +17,10 @@ struct Handle {
   // True once we have emitted at least one chunk of speech on this handle.
   // Used to optionally insert a tiny silence between consecutive queueIPA calls.
   bool streamHasSpeech = false;
+  // True if the last emitted *real phoneme* in the previous chunk was vowel-like
+  // (vowel or semivowel). Used to avoid inserting boundary pauses inside
+  // vowel-to-vowel transitions (e.g. diphthongs split across chunks).
+  bool lastEndsVowelLike = false;
   std::string langTag;
   std::string lastError;
   std::mutex mu;
@@ -75,6 +79,7 @@ NVSP_FRONTEND_API int nvspFrontend_setLanguage(nvspFrontend_handle_t handle, con
   // Treat language change as the start of a new stream, so we don't
   // insert a segment boundary gap before the first chunk in the new language.
   h->streamHasSpeech = false;
+  h->lastEndsVowelLike = false;
   h->langTag = normalizeLangTag(lang);
   return 1;
 }
@@ -124,20 +129,54 @@ NVSP_FRONTEND_API int nvspFrontend_queueIPA(
     return 0;
   }
 
+  // Determine whether this chunk starts/ends with a vowel-like phoneme.
+  // We ignore silence/preStopGap tokens for this purpose.
+  const Token* firstReal = nullptr;
+  const Token* lastReal = nullptr;
+  for (const Token& t : tokens) {
+    if (!t.def || t.silence) continue;
+    if (!firstReal) firstReal = &t;
+    lastReal = &t;
+  }
+
+  auto isVowelLike = [](const Token& t) -> bool {
+    if (!t.def) return false;
+    const std::uint32_t f = t.def->flags;
+    return (f & kIsVowel) || (f & kIsSemivowel);
+  };
+
+  const bool startsVowelLike = firstReal && isVowelLike(*firstReal);
+  const bool endsVowelLike = lastReal && isVowelLike(*lastReal);
+  const bool hasRealPhoneme = (firstReal != nullptr);
+
   // Optional: insert a short silence between consecutive queueIPA calls.
   // This helps when callers stitch UI speech from multiple chunks.
-  if (cb && h->streamHasSpeech && !tokens.empty()) {
+  //
+  // However, a boundary pause can create an audible "hole" in vowel-to-vowel
+  // transitions (e.g. when a diphthong is split across chunks). To keep
+  // diphthongs smooth while preserving consonant clarity, we suppress the
+  // boundary gap when the previous chunk ended with a vowel/semivowel and
+  // the next chunk starts with a vowel/semivowel.
+  if (cb && h->streamHasSpeech && hasRealPhoneme) {
     const double gapMs = h->pack.lang.segmentBoundaryGapMs;
     const double fadeMs = h->pack.lang.segmentBoundaryFadeMs;
     if (gapMs > 0.0 || fadeMs > 0.0) {
-      const double spd = (speed > 0.0) ? speed : 1.0;
-      cb(userData, nullptr, gapMs / spd, fadeMs / spd, userIndexBase);
+      bool skip = false;
+      if (h->pack.lang.segmentBoundarySkipVowelToVowel &&
+          h->lastEndsVowelLike && startsVowelLike) {
+        skip = true;
+      }
+      if (!skip) {
+        const double spd = (speed > 0.0) ? speed : 1.0;
+        cb(userData, nullptr, gapMs / spd, fadeMs / spd, userIndexBase);
+      }
     }
   }
 
   emitFrames(h->pack, tokens, userIndexBase, cb, userData);
-  if (!tokens.empty()) {
+  if (hasRealPhoneme) {
     h->streamHasSpeech = true;
+    h->lastEndsVowelLike = endsVowelLike;
   }
   return 1;
 }

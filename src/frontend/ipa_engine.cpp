@@ -1234,6 +1234,104 @@ static bool parseToTokens(const PackSet& pack, const std::u32string& text, std::
   return true;
 }
 
+static inline bool isAutoDiphthongOffglideCandidate(char32_t c) {
+  // Heuristic for “diphthong offglide” vowels.
+  //
+  // Many IPA sources (including eSpeak) represent diphthongs as two vowels.
+  // Some languages (or some eSpeak outputs) omit an explicit tie-bar/non-syllabic
+  // mark. When enabled via packs, we can treat certain vowel+vowel sequences as a
+  // diphthong by marking them as tied (as if U+0361 were present).
+  //
+  // We keep this intentionally conservative: only “high” vowels which commonly
+  // act as offglides are considered.
+  switch (c) {
+    case U'i':
+    case U'ɪ': // ɪ
+    case U'u':
+    case U'ʊ': // ʊ
+    case U'y':
+    case U'ʏ': // ʏ
+    case U'ɯ': // ɯ
+    case U'ɨ': // ɨ
+      return true;
+    default:
+      return false;
+  }
+}
+
+static void setTokenFromDef(Token& t, const PhonemeDef* def) {
+  if (!def) return;
+  t.def = def;
+  t.setMask = def->setMask;
+  std::memcpy(t.field, def->field, sizeof(double) * kFrameFieldCount);
+  if (!def->key.empty()) {
+    t.baseChar = def->key[0];
+  }
+}
+
+static const PhonemeDef* mapOffglideToSemivowel(const PackSet& pack, char32_t vowel) {
+  // Conservative mapping used by autoDiphthongOffglideToSemivowel.
+  // If your language needs rounded-front glides (ɥ, etc.), map those in packs
+  // by introducing a dedicated phoneme key.
+  char32_t target = 0;
+  switch (vowel) {
+    case U'i':
+    case U'ɪ':
+    case U'ɨ':
+      target = U'j';
+      break;
+    case U'u':
+    case U'ʊ':
+      target = U'w';
+      break;
+    default:
+      return nullptr;
+  }
+
+  std::u32string k;
+  k.push_back(target);
+  return findPhoneme(pack, k);
+}
+
+static void autoTieDiphthongs(const PackSet& pack, std::vector<Token>& tokens) {
+  if (!pack.lang.autoTieDiphthongs) return;
+
+  int prevReal = -1;
+  const int n = static_cast<int>(tokens.size());
+  for (int i = 0; i < n; ++i) {
+    Token& cur = tokens[i];
+    if (!cur.def || cur.silence) continue;
+
+    if (prevReal >= 0) {
+      Token& prev = tokens[prevReal];
+
+      const bool prevVowelLike = tokenIsVowel(prev) || tokenIsSemivowel(prev);
+      const bool curVowelLike = tokenIsVowel(cur) || tokenIsSemivowel(cur);
+
+      // Only consider within-syllable vowel-like sequences.
+      // If the current token starts a new syllable (explicit stress, word start,
+      // etc.), treat it as hiatus instead.
+      if (prevVowelLike && curVowelLike && !cur.wordStart && !cur.syllableStart) {
+        // Skip if the IPA already encoded tying, or the vowel is explicitly long.
+        if (!prev.tiedTo && !prev.tiedFrom && !cur.tiedTo && !cur.tiedFrom && !cur.lengthened) {
+          // Only auto-tie when the second vowel is a common offglide candidate.
+          if (isAutoDiphthongOffglideCandidate(cur.baseChar)) {
+            prev.tiedTo = true;
+            cur.tiedFrom = true;
+            if (pack.lang.autoDiphthongOffglideToSemivowel) {
+              if (const PhonemeDef* glide = mapOffglideToSemivowel(pack, cur.baseChar)) {
+                setTokenFromDef(cur, glide);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    prevReal = i;
+  }
+}
+
 bool convertIpaToTokens(
   const PackSet& pack,
   const std::string& ipaUtf8,
@@ -1261,6 +1359,9 @@ bool convertIpaToTokens(
   if (outTokens.empty()) {
     return true;
   }
+
+  // Optional: auto-tie diphthongs when IPA does not include an explicit tie-bar.
+  autoTieDiphthongs(pack, outTokens);
 
   // Copy-adjacent correction (h, inserted aspirations, etc.).
   correctCopyAdjacent(outTokens);

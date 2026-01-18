@@ -181,6 +181,27 @@ struct LanguagePack {
   // transitions can otherwise feel abrupt in some languages.
   double segmentBoundaryGapMs = 0.0;
   double segmentBoundaryFadeMs = 0.0;
+  // If true (default), suppress the segmentBoundary* silence insertion when the
+  // previous chunk ends with a vowel/semivowel and the next chunk starts with a
+  // vowel/semivowel. This avoids audible "holes" in vowel-to-vowel transitions
+  // (e.g. diphthongs across chunks).
+  bool segmentBoundarySkipVowelToVowel = true;
+
+  // Automatic diphthong handling (optional).
+  //
+  // eSpeak usually encodes diphthongs as a sequence of two vowel qualities,
+  // sometimes with a tie bar (U+0361). If tie bars are absent, the frontend
+  // can optionally treat some vowel+vowel sequences as a diphthong by marking
+  // them as tied internally. This makes the second vowel behave like a short
+  // offglide without requiring a dedicated diphthong phoneme in phonemes.yaml.
+  //
+  // This is off by default to avoid changing languages that rely on vowel
+  // hiatus (two syllables). Enable per-language in packs if desired.
+  bool autoTieDiphthongs = false;
+  // If true, and autoTieDiphthongs is enabled, try to replace the offglide
+  // vowel with a semivowel (e.g. i/ɪ -> j, u/ʊ -> w) when those phonemes exist
+  // in phonemes.yaml. This can make diphthong movement more obvious.
+  bool autoDiphthongOffglideToSemivowel = false;
 
   // Duration scaling.
   double lengthenedScale = 1.05;

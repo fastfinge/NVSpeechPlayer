@@ -285,6 +285,9 @@ static void mergeSettings(LanguagePack& lp, const yaml_min::Node& settings) {
   // Segment boundary timing (ms at speed=1.0; divided by current speed).
   getNum("segmentBoundaryGapMs", lp.segmentBoundaryGapMs);
   getNum("segmentBoundaryFadeMs", lp.segmentBoundaryFadeMs);
+  getBool("segmentBoundarySkipVowelToVowel", lp.segmentBoundarySkipVowelToVowel);
+  getBool("autoTieDiphthongs", lp.autoTieDiphthongs);
+  getBool("autoDiphthongOffglideToSemivowel", lp.autoDiphthongOffglideToSemivowel);
 
   getNum("lengthenedScale", lp.lengthenedScale);
   getNum("lengthenedScaleHu", lp.lengthenedScaleHu);
