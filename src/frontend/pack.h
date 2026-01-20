@@ -141,12 +141,31 @@ struct IntonationClause {
   int tailEnd = 8;
 };
 
+
 struct LanguagePack {
   std::string langTag; // normalized (lowercase, '-')
 
   // Settings / knobs.
   double primaryStressDiv = 1.4;
   double secondaryStressDiv = 1.1;
+  // Legacy pitch mode.
+  //
+  // When enabled, the frontend uses the older time-based pitch curve math
+  // from the ee80f4d-era ipa.py (sometimes referred to as ipa-older.py).
+  // This tends to sound more like classic screen-reader prosody at higher
+  // rates than the newer table-based intonation model.
+  bool legacyPitchMode = false;
+
+  // Optional scaling applied to the caller-provided inflection (0..1) when
+  // legacyPitchMode is enabled.
+  //
+  // Historical NVSpeechPlayer defaults used a lower inflection setting (e.g. 35)
+  // than modern defaults (e.g. 60). Feeding those higher values into the legacy
+  // math can sound overly excited.
+  //
+  // 1.0 preserves the historical behavior exactly.
+  // A value around 0.58 maps 0.60 -> 0.35.
+  double legacyPitchInflectionScale = 0.58;
 
   bool postStopAspirationEnabled = false;
   std::u32string postStopAspirationPhoneme = U"h";
@@ -207,6 +226,21 @@ struct LanguagePack {
   double lengthenedScale = 1.05;
   double lengthenedScaleHu = 1.3;
   bool applyLengthenedScaleToVowelsOnly = true;
+
+  // Optional: additional scaling for lengthened vowels (ː) when they occur in a
+  // final closed syllable.
+  //
+  // Specifically, this multiplier is applied when:
+  //   - the current token is a vowel with a length mark (ː)
+  //   - the vowel is followed (within the same word) by one or more consonants
+  //   - there are no later vowel nuclei before the next word boundary
+  //
+  // This gives packs a clean way to slightly shorten long vowels before
+  // word-final consonant clusters (e.g. "rules" /ruːlz/) without affecting
+  // open-syllable cases like "ruler" /ruːlə/.
+  //
+  // Default 1.0 = disabled.
+  double lengthenedVowelFinalCodaScale = 1.0;
 
   // Language-specific duration tweaks.
   bool huShortAVowelEnabled = true;

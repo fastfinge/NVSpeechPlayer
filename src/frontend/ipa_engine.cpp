@@ -624,6 +624,45 @@ static void calculateTimes(std::vector<Token>& tokens, const PackSet& pack, doub
       }
     }
 
+    // Optional: additional shortening for lengthened vowels (ː) in a final
+    // closed syllable (vowel + word-final consonant(s)).
+    //
+    // This is intentionally conservative: we only apply it when there are no
+    // later vowels before the next word boundary, which avoids false positives
+    // in words where a consonant cluster is actually the onset of the next
+    // syllable (e.g. "apricot" /ˈeɪprɪ.../).
+    if (lang.lengthenedVowelFinalCodaScale != 1.0 && t.lengthened && tokenIsVowel(t)) {
+      // Find the next non-silence token.
+      size_t j = i + 1;
+      while (j < tokens.size() && tokens[j].silence) ++j;
+
+      if (j < tokens.size() && !tokens[j].wordStart) {
+        const Token& after = tokens[j];
+        const bool afterVowelLike = tokenIsVowel(after) || tokenIsSemivowel(after);
+
+        // Only consider cases where the vowel is followed by a consonant.
+        if (!afterVowelLike) {
+          // If there are any later vowels in this word, avoid shortening.
+          bool laterVowel = false;
+          for (size_t k = j; k < tokens.size(); ++k) {
+            const Token& t2 = tokens[k];
+            if (t2.wordStart) break;
+            if (t2.silence) continue;
+            if (tokenIsVowel(t2)) {
+              laterVowel = true;
+              break;
+            }
+          }
+
+          if (!laterVowel) {
+            dur *= lang.lengthenedVowelFinalCodaScale;
+            // Keep fades from dominating very short vowels.
+            fade = std::min(fade, 14.0 / curSpeed);
+          }
+        }
+      }
+    }
+
     t.durationMs = dur;
     t.fadeMs = fade;
     last = &t;
@@ -772,7 +811,158 @@ static const IntonationClause& getClauseParams(const LanguagePack& lang, char cl
   return storage;
 }
 
-static void calculatePitches(std::vector<Token>& tokens, const PackSet& pack, double basePitch, double inflection, char clauseType) {
+
+
+static void calculatePitchesLegacy(std::vector<Token>& tokens, const PackSet& pack,
+                                  double speed, double basePitch, double inflection, char clauseType) {
+  // Port of ipa-older.py calculatePhonemePitches().
+  //
+  // This is intentionally time-based (uses accumulated voiced duration) rather than
+  // table-based, and tends to produce a more predictable "classic" screen reader
+  // prosody at higher rates.
+
+  if (speed <= 0.0) speed = 1.0;
+
+  // The legacy pitch math was historically paired with a lower default inflection
+  // setting (e.g. 35) than many modern configs (often 60).
+  // To keep legacyPitchMode usable without forcing users to retune sliders,
+  // we apply an optional scale here.
+  double inflScale = pack.lang.legacyPitchInflectionScale;
+  if (inflScale <= 0.0) inflScale = 1.0;
+  // Keep this bounded to avoid pathological values from bad configs.
+  if (inflScale > 2.0) inflScale = 2.0;
+  const double infl = inflection * inflScale;
+
+  double totalVoicedDuration = 0.0;
+  double finalInflectionStartTime = 0.0;
+  bool needsSetFinalInflectionStartTime = false;
+  int finalVoicedIndex = -1;
+
+  const Token* last = nullptr;
+  for (size_t i = 0; i < tokens.size(); ++i) {
+    const Token& t = tokens[i];
+
+    if (t.wordStart) {
+      needsSetFinalInflectionStartTime = true;
+    }
+
+    if (tokenIsVoiced(t)) {
+      finalVoicedIndex = static_cast<int>(i);
+      if (needsSetFinalInflectionStartTime) {
+        finalInflectionStartTime = totalVoicedDuration;
+        needsSetFinalInflectionStartTime = false;
+      }
+      totalVoicedDuration += t.durationMs;
+    } else if (last && tokenIsVoiced(*last)) {
+      // When we leave a voiced segment, count the fade time as part of the voiced run.
+      totalVoicedDuration += last->fadeMs;
+    }
+
+    last = &t;
+  }
+
+  if (totalVoicedDuration <= 0.0) {
+    // No voiced frames: set a constant pitch so downstream code has sane values.
+    for (Token& t : tokens) {
+      setPitchFields(t, basePitch, basePitch);
+    }
+    return;
+  }
+
+  double durationCounter = 0.0;
+  double curBasePitch = basePitch;
+  double lastEndVoicePitch = basePitch;
+  double stressInflection = infl / 1.5;
+
+  Token* lastToken = nullptr;
+  bool syllableStress = false;
+  bool firstStress = true;
+
+  for (size_t i = 0; i < tokens.size(); ++i) {
+    Token& t = tokens[i];
+
+    if (t.syllableStart) {
+      syllableStress = (t.stress == 1);
+    }
+
+    double voicePitch = lastEndVoicePitch;
+    const bool inFinalInflection = (durationCounter >= finalInflectionStartTime);
+
+    // Advance the duration counter.
+    if (tokenIsVoiced(t)) {
+      durationCounter += t.durationMs;
+    } else if (lastToken && tokenIsVoiced(*lastToken)) {
+      durationCounter += lastToken->fadeMs;
+    }
+
+    const double oldBasePitch = curBasePitch;
+
+    if (infl == 0.0) {
+      curBasePitch = basePitch;
+    } else if (!inFinalInflection) {
+      // Gentle declination across the clause.
+      curBasePitch = basePitch / (1.0 + (infl / 25000.0) * durationCounter * speed);
+    } else {
+      // Final inflection is shaped only over the last word.
+      const double denom = (totalVoicedDuration - finalInflectionStartTime);
+      double ratio = 0.0;
+      if (denom > 0.0) {
+        ratio = (durationCounter - finalInflectionStartTime) / denom;
+      }
+
+      if (clauseType == '.') {
+        ratio /= 1.5;
+      } else if (clauseType == '?') {
+        ratio = 0.5 - (ratio / 1.2);
+      } else if (clauseType == ',') {
+        ratio /= 8.0;
+      } else {
+        ratio = ratio / 1.75;
+      }
+
+      curBasePitch = basePitch / (1.0 + (infl * ratio * 1.5));
+    }
+
+    double endVoicePitch = curBasePitch;
+
+    // Add a pitch accent on the vowel in the stressed syllable.
+    if (syllableStress && tokenIsVowel(t)) {
+      if (firstStress) {
+        voicePitch = oldBasePitch * (1.0 + stressInflection / 3.0);
+        endVoicePitch = curBasePitch * (1.0 + stressInflection);
+        firstStress = false;
+      } else if (static_cast<int>(i) < finalVoicedIndex) {
+        voicePitch = oldBasePitch * (1.0 + stressInflection / 3.0);
+        endVoicePitch = oldBasePitch * (1.0 + stressInflection);
+      } else {
+        voicePitch = basePitch * (1.0 + stressInflection);
+      }
+
+      stressInflection *= 0.9;
+      stressInflection = std::max(stressInflection, infl / 2.0);
+      syllableStress = false;
+    }
+
+    // Match the legacy behavior: ensure pitch continuity by snapping the previous
+    // token's end pitch to this token's start pitch (useful when accents start).
+    if (lastToken) {
+      const int evp = static_cast<int>(FieldId::endVoicePitch);
+      lastToken->field[evp] = voicePitch;
+      lastToken->setMask |= (1ull << evp);
+    }
+
+    setPitchFields(t, voicePitch, endVoicePitch);
+    lastEndVoicePitch = endVoicePitch;
+    lastToken = &t;
+  }
+}
+
+static void calculatePitches(std::vector<Token>& tokens, const PackSet& pack, double speed, double basePitch, double inflection, char clauseType) {
+  if (pack.lang.legacyPitchMode) {
+    calculatePitchesLegacy(tokens, pack, speed, basePitch, inflection, clauseType);
+    return;
+  }
+
   IntonationClause tmp;
   const IntonationClause& params = getClauseParams(pack.lang, clauseType, tmp);
 
@@ -1345,6 +1535,16 @@ bool convertIpaToTokens(
   outTokens.clear();
 
   if (speed <= 0.0) speed = 1.0;
+
+  // The legacy pitch math was historically paired with a lower default inflection
+  // setting (e.g. 35) than many modern configs (often 60).
+  // To keep legacyPitchMode usable without forcing users to retune sliders,
+  // we apply an optional scale here.
+  double inflScale = pack.lang.legacyPitchInflectionScale;
+  if (inflScale <= 0.0) inflScale = 1.0;
+  // Keep this bounded to avoid pathological values from bad configs.
+  if (inflScale > 2.0) inflScale = 2.0;
+  const double infl = inflection * inflScale;
   if (clauseType == 0) clauseType = '.';
 
   const std::u32string normalized = normalizeIpaText(pack, ipaUtf8);
@@ -1379,7 +1579,7 @@ bool convertIpaToTokens(
   calculateTimes(outTokens, pack, speed);
 
   // Pitch.
-  calculatePitches(outTokens, pack, basePitch, inflection, clauseType);
+  calculatePitches(outTokens, pack, speed, basePitch, inflection, clauseType);
 
   // Tone overlay (optional).
   applyToneContours(outTokens, pack, basePitch, inflection);

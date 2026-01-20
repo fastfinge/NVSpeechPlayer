@@ -264,6 +264,13 @@ static void mergeSettings(LanguagePack& lp, const yaml_min::Node& settings) {
   getNum("primaryStressDiv", lp.primaryStressDiv);
   getNum("secondaryStressDiv", lp.secondaryStressDiv);
 
+  // Legacy pitch mode (ported from the ee80f4d-era ipa.py / ipa-older.py).
+  // Enable per-language in packs via:
+  //   legacyPitchMode: true
+  getBool("legacyPitchMode", lp.legacyPitchMode);
+  // Optional: scale applied to the caller-provided inflection (0..1) when legacyPitchMode is enabled.
+  getNum("legacyPitchInflectionScale", lp.legacyPitchInflectionScale);
+
   getBool("postStopAspirationEnabled", lp.postStopAspirationEnabled);
   {
     const yaml_min::Node* n = settings.get("postStopAspirationPhoneme");
@@ -292,6 +299,7 @@ static void mergeSettings(LanguagePack& lp, const yaml_min::Node& settings) {
   getNum("lengthenedScale", lp.lengthenedScale);
   getNum("lengthenedScaleHu", lp.lengthenedScaleHu);
   getBool("applyLengthenedScaleToVowelsOnly", lp.applyLengthenedScaleToVowelsOnly);
+  getNum("lengthenedVowelFinalCodaScale", lp.lengthenedVowelFinalCodaScale);
 
   getBool("huShortAVowelEnabled", lp.huShortAVowelEnabled);
   {
