@@ -195,6 +195,7 @@ These settings optionally add tie bars for vowel+vowel sequences that should beh
 - `lengthenedScale` (number, default `1.05`): Duration multiplier when a phoneme is lengthened with ː.
 - `lengthenedScaleHu` (number, default `1.3`): Hungarian-specific length scaling (used by legacy behavior).
 - `applyLengthenedScaleToVowelsOnly` (bool, default `true`): If true, ː only lengthens vowels.
+- `lengthenedVowelFinalCodaScale` (number, default `1.0`): Additional multiplier for lengthened vowels (ː) when they occur in a word-final closed syllable (vowel + final consonant cluster), e.g. “rules” /ruːlz/. This is intentionally conservative: it does not apply when there are later vowels in the same word (e.g. “ruler” /ruːlə/).
 
 #### Language-specific duration tweaks
 These are “compat switches” for behavior that existed in the legacy Python pipeline.
