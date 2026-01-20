@@ -218,6 +218,15 @@ These are “compat switches” for behavior that existed in the legacy Python p
 - `stripAllophoneDigits` (bool, default `true`): Removes eSpeak allophone digits from IPA streams (disable for tonal digit languages if needed).
 - `stripHyphen` (bool, default `true`): Removes hyphens in IPA streams.
 
+#### Pitch model selection
+- By default, the frontend uses the table-based intonation model (same contours as `ipa.py`).
+- If you prefer the older, more time-based pitch curves (ported from the ee80f4d-era `ipa.py`), you can enable legacy pitch mode per language.
+- `legacyPitchMode` (bool, default `false`): If true, use the legacy pitch curve model.
+- `legacyPitchInflectionScale` (number, default `0.58`): When `legacyPitchMode` is enabled, the engine multiplies the caller-provided `inflection` (0..1) by this value before applying the legacy math.
+  - Why: historical NVSpeechPlayer defaults used a lower inflection setting (e.g. 35) than many modern configs (often 60), and the legacy math can sound overly “excited” when fed higher inflection values.
+  - Set to `1.0` to preserve the historical behavior exactly.
+
+
 #### Tonal language support
 - `tonal` (bool, default `false`): Enables tone parsing / tone contours.
 - `toneDigitsEnabled` (bool, default `true`): Allows digits 1–5 as tone markers.
