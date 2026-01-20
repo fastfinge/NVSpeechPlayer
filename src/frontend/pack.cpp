@@ -296,6 +296,21 @@ static void mergeSettings(LanguagePack& lp, const yaml_min::Node& settings) {
   getBool("autoTieDiphthongs", lp.autoTieDiphthongs);
   getBool("autoDiphthongOffglideToSemivowel", lp.autoDiphthongOffglideToSemivowel);
 
+  // Optional: spelling diphthong handling in acronym-like (spelled-out) words.
+  {
+    std::string mode;
+    getStr("spellingDiphthongMode", mode);
+    if (!mode.empty()) {
+      std::string m;
+      m.reserve(mode.size());
+      for (char c : mode) m.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+      // Only accept known modes; unknown values fall back to default.
+      if (m == "none" || m == "monophthong") {
+        lp.spellingDiphthongMode = m;
+      }
+    }
+  }
+
   // Optional: intra-word vowel hiatus break on stressed vowel starts.
   getNum("stressedVowelHiatusGapMs", lp.stressedVowelHiatusGapMs);
   getNum("stressedVowelHiatusFadeMs", lp.stressedVowelHiatusFadeMs);

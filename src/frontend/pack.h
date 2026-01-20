@@ -235,6 +235,21 @@ struct LanguagePack {
   double stressedVowelHiatusGapMs = 0.0;
   double stressedVowelHiatusFadeMs = 0.0;
 
+  // Spelling diphthong handling (optional).
+  //
+  // Some eSpeak IPA outputs for spelled-out acronyms run letter names together
+  // (e.g. NVDA -> ˌɛnvˌiːdˌiːˈeɪ). If the letter name contains an explicit
+  // diphthong, the vowel movement can sound like an extra glide when it follows
+  // another vowel.
+  //
+  // When spellingDiphthongMode is set to 'monophthong', the frontend will
+  // selectively render certain letter-name diphthongs (currently just English
+  // letter 'A' /eɪ/) as a long monophthong in acronym-like words, reducing the
+  // audible 'y' glide without inserting a pause.
+  //
+  // Allowed values: 'none' (default), 'monophthong'.
+  std::string spellingDiphthongMode = "none";
+
   // Duration scaling.
   double lengthenedScale = 1.05;
   double lengthenedScaleHu = 1.3;

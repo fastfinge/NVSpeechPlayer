@@ -1543,6 +1543,116 @@ static void autoTieDiphthongs(const PackSet& pack, std::vector<Token>& tokens) {
   }
 }
 
+
+
+static bool wordLooksLikeSpelling(const std::vector<Token>& tokens, size_t start, size_t end) {
+  int syllables = 0;
+  int stressed = 0;
+
+  for (size_t i = start; i < end; ++i) {
+    const Token& t = tokens[i];
+    if (!t.def || t.silence) continue;
+    if (t.syllableStart) {
+      ++syllables;
+      if (t.stress != 0) ++stressed;
+    }
+  }
+
+  // Heuristic: spelled-out acronyms/initialisms tend to have stress on every
+  // letter-name syllable, and they are almost always multi-syllable.
+  if (syllables < 2) return false;
+  if (stressed < syllables) return false;
+  return true;
+}
+
+static void applySpellingDiphthongMode(const PackSet& pack, std::vector<Token>& tokens) {
+  const LanguagePack& lang = pack.lang;
+  if (lang.spellingDiphthongMode != "monophthong") return;
+
+  // Walk words (real phoneme tokens only; ignore inserted silence tokens).
+  size_t i = 0;
+  while (i < tokens.size()) {
+    // Find the next word start (non-silence token with wordStart).
+    while (i < tokens.size() && (tokens[i].silence || !tokens[i].def || !tokens[i].wordStart)) {
+      ++i;
+    }
+    if (i >= tokens.size()) break;
+
+    const size_t wordStart = i;
+    size_t wordEnd = wordStart + 1;
+    while (wordEnd < tokens.size()) {
+      if (!tokens[wordEnd].silence && tokens[wordEnd].def && tokens[wordEnd].wordStart) {
+        break;
+      }
+      ++wordEnd;
+    }
+
+    if (wordLooksLikeSpelling(tokens, wordStart, wordEnd)) {
+      // Convert letter-name diphthongs to monophthongs.
+      // Currently this is intentionally narrow: only handle English letter 'A'
+      // (/eɪ/ or pack-normalized /ej/) when it follows a vowel-like sound.
+      int prevReal = -1;
+      size_t pos = wordStart;
+      while (pos < wordEnd) {
+        Token& t = tokens[pos];
+        if (!t.def || t.silence) {
+          ++pos;
+          continue;
+        }
+
+        // Candidate for "A": stressed syllable that starts on a vowel 'e'.
+        const bool isStressedSyllableStart = t.syllableStart && (t.stress != 0);
+        const bool isE = tokenIsVowel(t) && (t.baseChar == U'e');
+
+        bool prevVowelLike = false;
+        if (prevReal >= 0 && static_cast<size_t>(prevReal) >= wordStart && static_cast<size_t>(prevReal) < wordEnd) {
+          const Token& prev = tokens[static_cast<size_t>(prevReal)];
+          if (prev.def && !prev.silence) {
+            prevVowelLike = tokenIsVowel(prev) || tokenIsSemivowel(prev);
+          }
+        }
+
+        if (isStressedSyllableStart && isE && prevVowelLike) {
+          // Find the next real token (skip silence).
+          size_t j = pos + 1;
+          while (j < wordEnd && (tokens[j].silence || !tokens[j].def)) ++j;
+
+          if (j < wordEnd) {
+            const Token& off = tokens[j];
+            const bool isJ = tokenIsSemivowel(off) && (off.baseChar == U'j');
+            const bool isIshVowel = tokenIsVowel(off) && (off.baseChar == U'ɪ' || off.baseChar == U'i');
+            if (isJ || isIshVowel) {
+              // Only treat this as standalone /eɪ/ if the offglide is followed
+              // by the next syllable (next letter) or the end of the word.
+              size_t k = j + 1;
+              while (k < wordEnd && (tokens[k].silence || !tokens[k].def)) ++k;
+
+              if (k >= wordEnd || tokens[k].syllableStart) {
+                // Monophthongize: keep the /e/ nucleus, drop the offglide.
+                // Mark the nucleus as lengthened to preserve a letter-name feel.
+                t.lengthened = true;
+                t.tiedTo = false;
+                t.tiedFrom = false;
+
+                // Erase the offglide token.
+                tokens.erase(tokens.begin() + static_cast<std::vector<Token>::difference_type>(j));
+                --wordEnd;
+
+                // Do not advance pos; re-evaluate with the new neighbor.
+                continue;
+              }
+            }
+          }
+        }
+
+        prevReal = static_cast<int>(pos);
+        ++pos;
+      }
+    }
+
+    i = wordEnd;
+  }
+}
 bool convertIpaToTokens(
   const PackSet& pack,
   const std::string& ipaUtf8,
@@ -1583,6 +1693,9 @@ bool convertIpaToTokens(
 
   // Optional: auto-tie diphthongs when IPA does not include an explicit tie-bar.
   autoTieDiphthongs(pack, outTokens);
+
+  // Optional: spelling diphthong handling (e.g. acronym letter names).
+  applySpellingDiphthongMode(pack, outTokens);
 
   // Copy-adjacent correction (h, inserted aspirations, etc.).
   correctCopyAdjacent(outTokens);
