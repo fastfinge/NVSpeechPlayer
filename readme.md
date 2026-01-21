@@ -181,11 +181,20 @@ These settings help when callers stitch speech from multiple chunks (common in N
   - If non-zero, inserts a short silence frame between consecutive frontend queue calls on the same handle.
 - `segmentBoundarySkipVowelToVowel` (bool, default `true`)
   - If true, skips the segment-boundary silence when a chunk ends with a vowel/semivowel and the next chunk begins with a vowel/semivowel (to avoid audible gaps across diphthongs).
+- `segmentBoundarySkipVowelToLiquid` (bool, default `false`)
+  - If true, also skips the segment-boundary silence when a chunk ends with a vowel/semivowel and the next chunk begins with a liquid-like consonant (liquids/taps/trills). This can help reduce audible seams in vowel+R transitions across chunks (e.g. “play” + “er”).
 
 #### Automatic diphthong handling
 These settings optionally add tie bars for vowel+vowel sequences that should behave like a diphthong.
 - `autoTieDiphthongs` (bool, default `false`): If true, the frontend can mark eligible vowel+vowel pairs as tied (diphthongs) even when the IPA lacks a tie bar.
 - `autoDiphthongOffglideToSemivowel` (bool, default `false`): If true (and `autoTieDiphthongs` is enabled), convert the diphthong offglide to a semivowel (`i/ɪ → j`, `u/ʊ → w`) when those phonemes exist.
+
+#### Semivowel offglide shortening
+If your pack represents diphthongs using a vowel+semivowel sequence (for example `eɪ → ej`), you may hear a tiny “syllable break” when that semivowel is followed by a vowel or a liquid-like consonant inside the same word (e.g. “player”, “later”).
+
+- `semivowelOffglideScale` (number, default `1.0`)
+  - If set to anything other than `1.0`, the engine multiplies the duration and fade of semivowel tokens in the pattern `vowel + semivowel + (vowel | liquid | tap | trill)`.
+  - Values below `1.0` make those semivowels shorter and more “glide-like” without affecting word-final diphthongs like “day”.
 
 #### Intra-word stressed vowel hiatus break (spelling aid)
 These settings can insert a tiny silence between two adjacent vowels when the *second* vowel is explicitly stressed. This mostly exists to help spelled-out acronyms (initialisms) where two letter names meet with no consonant in between.
@@ -257,6 +266,9 @@ These are “compat switches” for behavior that existed in the legacy Python p
   - `atWordEnd`: true/false
   - `beforeClass`: NAME
   - `afterClass`: NAME
+
+Note: stress markers (`ˈ`, `ˌ`) are treated as transparent for `beforeClass` / `afterClass` checks.
+This lets rules match segment clusters like `rˈa` the same way they match `ra`.
 
 `transforms`:
 - Rules that match phonemes by properties (`isVowel`, `isStop`, etc.) and then modify fields:
