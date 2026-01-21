@@ -1,0 +1,12 @@
+# Croatian (hr)
+
+settings:
+  # Croatian eSpeak IPA uses the length mark (ː) for long vowels.
+  # Make it a bit more audible than the global default.
+  lengthenedScale: 1.15
+
+normalization:
+  replacements:
+    # Some eSpeak voices may output "æ" in contexts where Croatian should use plain "a".
+    - from: "æ"
+      to: "a"

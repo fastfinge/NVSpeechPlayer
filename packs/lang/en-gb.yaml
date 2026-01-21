@@ -1,0 +1,45 @@
+# packs/lang/en-gb.yaml
+# English (United Kingdom)
+# Inherits from: default.yaml -> en.yaml
+
+settings:
+  # Keep word-final long /uː/ (do/two/you) from sounding too clipped.
+  englishLongUWordFinalScale: 1.00
+
+normalization:
+  preReplacements:
+    # PRICE/MOUTH (five/nine/out): UK starts this diphthong a bit more open.
+    # Use an English-UK specific internal "a" variant so US tuning doesn't leak into en-gb.
+    - from: "aɪ"
+      to:   "ᵃɪ"
+    - from: "a͡ɪ"
+      to:   "ᵃ͡ɪ"
+    - from: "aʊ"
+      to:   "ᵃʊ"
+    - from: "a͡ʊ"
+      to:   "ᵃ͡ʊ"
+
+    # In eSpeak en-gb, "paren" comes out as "per-EN" (pəɹˈɛn), which sounds very US.
+    # In UK speech (especially in programming contexts) "PAR-en" is more common.
+    - from: "pəɹˈɛn"
+      to:   "pˈæɹən"
+
+  classes:
+    BATH_FOLLOW: ["s", "f", "θ"]
+
+  replacements:
+    # Broad BATH (bath/cast/fast): æ -> ɑː before s/f/θ
+    - from: "æ"
+      to: "ɑː"
+      when:
+        beforeClass: BATH_FOLLOW
+
+    # UK THOUGHT rounding: use the internal UK-ish variant.
+    - from: "ɔː"
+      to: "ᴏː"
+
+    # Non-rhotic NURSE: if any rhotic NURSE slips in, de-rhoticize.
+    - from: "ɝː"
+      to: "ɜː"
+    - from: "ɝ"
+      to: "ɜ"

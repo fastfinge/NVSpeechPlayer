@@ -2,15 +2,38 @@
 # English (US) overrides layered on top of default.yaml + en.yaml
 
 settings:
+  # US can sound overly "clicky" / separated in clusters (e.g. "start", "smart")
+  # if we insert stop closures everywhere.
   stopClosureMode: always
+  stopClosureVowelGapMs: 24
+  stopClosureVowelFadeMs: 6
+  stopClosureClusterGapMs: 16
+  stopClosureClusterFadeMs: 3
+
+  # Helps "bank" / "think" / "thanks" etc feel less "boxy" by giving nasal+stop
+  # clusters a tiny bit of separation.
+  stopClosureAfterNasalsEnabled: true
+
   postStopAspirationEnabled: true
+
   englishLongUShortenEnabled: true
-  englishLongUWordFinalScale: 0.80
+  englishLongUWordFinalScale: 0.95
+
+  # Use the US/CA GOOSE vowel variant.
+  englishLongUKey: "ᵿ"
 
   # US vowels tend to be shorter than the UK baseline in en.yaml.
-  # Keep the global default scale here.
   lengthenedScale: 1.05
 
+  spellingDiphthongMode: monophthong
+  autoTieDiphthongs: false
+  autoDiphthongOffglideToSemivowel: false
+
+  # Shorten semivowel offglides inside words (helps "player", "layer", etc.).
+  semivowelOffglideScale: 0.1
+  stressedVowelHiatusGapMs: 0
+  stressedVowelHiatusFadeMs: 0
+  legacyPitchMode: false
 normalization:
   preReplacements:
     # Protect PRICE/MOUTH diphthongs from broad TRAP rules (e.g. five/nine/out).
@@ -21,28 +44,169 @@ normalization:
       to:   "ɑ͡ʊ"
 
   classes:
-    BATH_FOLLOW: ["s", "f", "θ"]
+    # Vowels (including schwa/r-colored and extra internal keys used by English packs).
+    VOWELS: ["a", "e", "i", "o", "u", "ɐ", "ə", "ɜ", "ɝ", "ɑ", "ɒ", "ɔ", "ɛ", "æ", "ʊ", "ɪ", "ᵾ", "ᵿ", "ᴏ", "ᴐ", "ᴒ", "ã", "ẽ", "ĩ", "õ", "ũ", "ᴜ"]
+
+    # Used for a narrow "d+m" cluster tweak (administrator, etc.).
+    D_ONLY: ["d"]
 
   replacements:
-    # Keep TRAP normalization consistent with your old Python behavior.
+    # eSpeak (classic) en-us has a dictionary entry for "Microsoft" that produces
+    # an "-soft" syllable with /ɑː/ ("microsaft"). "soft" by itself is /sɔft/.
+    # Normalize the compound to use the same vowel as "soft".
+    - from: "sˌɑːft"
+      to:   "sˌɔft"
+    - from: "sˌɑft"
+      to:   "sˌɔft"
+
+    # Acronyms like "NVDA" / "GPDA" end in ...diːˈeɪ. If we rewrite eɪ -> ej,
+    # the final letter "A" can sound like "dee-yay". Keep that final A as a
+    # long monophthong instead.
+    - from: "iːˈeɪ"
+      to:   "iːˈeː"
+    - from: "iːˈe͡ɪ"
+      to:   "iːˈeː"
+    - from: "iːˌeɪ"
+      to:   "iːˌeː"
+    - from: "iːˌe͡ɪ"
+      to:   "iːˌeː"
+
+    # Standalone letter name "A": keep it as a long monophthong so it doesn't have
+    # an overly strong "ay" glide by itself.
+    - from: "ˈeɪ"
+      to:   "ˈeː"
+      when:
+        atWordStart: true
+        atWordEnd: true
+    - from: "ˈe͡ɪ"
+      to:   "ˈeː"
+      when:
+        atWordStart: true
+        atWordEnd: true
+    - from: "eɪ"
+      to:   "eː"
+      when:
+        atWordStart: true
+        atWordEnd: true
+    - from: "e͡ɪ"
+      to:   "eː"
+      when:
+        atWordStart: true
+        atWordEnd: true
+
+    # FACE before an American flap (ɾ) can sound overly separated if we insert a
+    # standalone glide segment. Tie the vowel+glide so it behaves like one movement.
+    - from: "eɪɾ"
+      to:   "e͡ᴊɾ"
+    - from: "e͡ɪɾ"
+      to:   "e͡ᴊɾ"
+
+    # Make FACE (eɪ) sound like a real diphthong instead of a flat "e".
+    # Using a semivowel offglide gives a clearer movement in our formant table.
+    # But when FACE is followed by a consonant (e.g. donate = ...eɪt), a full-strength /j/
+    # can sound a bit too "sung". Use a softer glide there.
+    - from: "eɪ"
+      to:   "eᴊ"
+      when:
+        atWordEnd: false
+    - from: "e͡ɪ"
+      to:   "e͡ᴊ"
+      when:
+        atWordEnd: false
+    - from: "eɪ"
+      to:   "ej"
+    - from: "e͡ɪ"
+      to:   "e͡j"
+
+    # Don't add a GOAT offglide for the standalone letter "O" or the word "no".
+    # These short tokens can sound like "oww" even with a softened /w/.
+    - from: "nˈoʊ"
+      to:   "nˈo"
+    - from: "nˈo͡ʊ"
+      to:   "nˈo"
+    - from: "ˈoʊ"
+      to:   "ˈo"
+    - from: "ˈo͡ʊ"
+      to:   "ˈo"
+
+
+    # Treat GOAT (oʊ) as vowel+glide so it doesn't split into two vowel beats.
+    # But in many common words GOAT is an unstressed prefix followed by a consonant
+    # that starts the stressed syllable (e.g. "okay" = oʊkˈeɪ). Converting oʊ -> ow
+    # makes the /w/ too prominent ("oww-kay"). Collapse those patterns first.
+    - from: "oʊkˈ"
+      to:   "okˈ"
+    - from: "oʊbˈ"
+      to:   "obˈ"
+    - from: "oʊdˈ"
+      to:   "odˈ"
+    - from: "oʊfˈ"
+      to:   "ofˈ"
+    - from: "oʊpˈ"
+      to:   "opˈ"
+    - from: "oʊtˈ"
+      to:   "otˈ"
+    - from: "oʊsˈ"
+      to:   "osˈ"
+    - from: "oʊmˈ"
+      to:   "omˈ"
+    - from: "oʊlˈ"
+      to:   "olˈ"
+
+    # Keep TRAP normalization consistent with the old Python behavior.
     - from: "a"
-      to: "æ"
+      to:   "æ"
+
+    # eSpeak emits ɐ for a lot of reduced vowels (e.g. "apply" starts with ɐ-).
+    # In US speech this can sound a bit "boxy" in our formant table.
+    - from: "ɐ"
+      to:   "ə"
+
+    # Use a slightly less-fronted GOOSE vowel in US to avoid an overly "oo" / "stewy" quality
+    # in words like "grouping" and "toolbar".
+    - from: "ᵾ"
+      to:   "ᵿ"
+
+    # US FOOT (ʊ) can drift too far back/rounded and sound like "o"
+    # in words like "put" and "output". Use a slightly more central variant.
+    - from: "ʊ"
+      to:   "ᵁ"
+
+    # ʊ also appears as the offglide in diphthongs (e.g. oʊ, aʊ).
+    # Keep diphthong offglides as the base ʊ so words like "window" don't change.
+    - from: "ᵁ"
+      to:   "ʊ"
+      when:
+        afterClass: VOWELS
+
+    # US GOAT (oʊ) can sound oddly "midwestern" if the /o/ start is too back.
+    # Use a slightly more fronted internal variant for en-us.
+    - from: "o"
+      to:   "ᵒ"
+
+    # US THOUGHT vowel: make /ɔ(ː)/ more open so it doesn't drift toward an "owe" quality.
+    - from: "ɔː"
+      to:   "ᴐː"
+    - from: "ɔ"
+      to:   "ᴐ"
 
     # BIG ONE:
     # eSpeak’s IPA often uses ɜ(ː) for NURSE even in en-us.
-    # Your old Python forced rhotic NURSE here; that’s what you’re missing now.
+    # Force rhotic NURSE.
     - from: "ɜː"
-      to: "ɝː"
+      to:   "ɝː"
     - from: "ɜ"
-      to: "ɝ"
+      to:   "ɝ"
 
-    # US narrow BATH (cast/bath/fast, etc):
-    # If eSpeak emits ɑː in these environments, force it back to æ.
-    - from: "ɑː"
-      to: "æ"
-      when:
-        beforeClass: BATH_FOLLOW
+    # Use a dedicated US /r/ variant.
+    - from: "ɹ"
+      to:   "ɻ"
 
     # Undo the UK THOUGHT tweak from en.yaml (en.yaml maps ɔː -> ᴏː).
     - from: "ᴏ"
-      to: "ɔ"
+      to:   "ɔ"
+
+    # NOTE:
+    # We intentionally *do not* undo the base English fronting of long /uː/.
+    # eSpeak's en-us still outputs uː in many common words (rules, do, you),
+    # and the backer multilingual "u" vowel can make them sound like "roo".

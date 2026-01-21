@@ -7,23 +7,176 @@
 settings:
   # Canada is largely closer to US timing than the UK baseline in en.yaml.
   lengthenedScale: 1.05
+  # Keep the same fronted GOOSE vowel as the base English pack.
+  englishLongUKey: "ᵿ"
+  # Helps "bank" / "think" / "thanks" etc feel less "boxy" by giving nasal+stop
+  # clusters a tiny bit of separation.
+  stopClosureAfterNasalsEnabled: true
 
 normalization:
+  preReplacements:
+    # eSpeak (classic) can pronounce "Microsoft" with /ɑ(ː)/ for the "-soft" syllable
+    # in some English voices. "soft" itself is /sɔft/, so normalize the compound.
+    #
+    # This is intentionally narrow: it only matches secondary-stressed "soft".
+    - from: "sˌɑːft"
+      to:   "sˌɔft"
+    - from: "sˌɑft"
+      to:   "sˌɔft"
+
+    # Don't add a GOAT offglide for the standalone letter "O" or the word "no".
+    # In en-ca, eSpeak outputs these with əʊ, which can sound like "noww" once
+    # we later normalize GOAT and apply a glide.
+    - from: "nˈəʊ"
+      to:   "nˈo"
+    - from: "nˈə͡ʊ"
+      to:   "nˈo"
+    - from: "ˈəʊ"
+      to:   "ˈo"
+    - from: "ˈə͡ʊ"
+      to:   "ˈo"
+
   classes:
-    BATH_FOLLOW: ["f", "θ", "s", "ð", "v", "n", "m"]
+    # eSpeak en-ca uses UK-ish LOT (ɒ) in many words (desktop/top/not/hot/dog...).
+    # For a more North American feel, map LOT -> ɑ only when followed by a stop.
+    # This avoids changing cases like "sorry" (ɒ before ɹ) and "office" (ɒ before f).
+    CA_LOT_STOP_FOLLOW: ["p", "t", "k", "ɡ", "b", "d"]
+
+    # Vowels (including schwa/r-colored and extra internal keys used by English packs).
+    # Helps us detect spelled-out acronym sequences like "NVDA" where "A" follows a vowel.
+    VOWELS: ["a", "e", "i", "o", "u", "ɐ", "ə", "ɜ", "ɝ", "ɑ", "ɒ", "ɔ", "ɛ", "æ", "ʊ", "ɪ", "ᵾ", "ᵿ", "ᴏ", "ᴐ", "ᴒ", "ã", "ẽ", "ĩ", "õ", "ũ", "ᴜ"]
 
   replacements:
+    # Letter name "A" can sound too much like a strong "ay" when FACE is rewritten
+    # to a vowel+glide (eɪ -> ej). For the *standalone* letter token only, keep it
+    # as a long monophthong.
+    - from: "ˈeɪ"
+      to:   "ˈeː"
+      when:
+        atWordStart: true
+        atWordEnd: true
+    - from: "ˈe͡ɪ"
+      to:   "ˈeː"
+      when:
+        atWordStart: true
+        atWordEnd: true
+    - from: "eɪ"
+      to:   "eː"
+      when:
+        atWordStart: true
+        atWordEnd: true
+    - from: "e͡ɪ"
+      to:   "eː"
+      when:
+        atWordStart: true
+        atWordEnd: true
+
+    # Acronyms like "NVDA" / "GPDA" end in ...diːˈeɪ. If we rewrite eɪ -> ej,
+    # the final letter "A" can sound like "dee-yay". Keep that final A as a
+    # long monophthong instead.
+    - from: "iːˈeɪ"
+      to:   "iːˈeː"
+    - from: "iːˈe͡ɪ"
+      to:   "iːˈeː"
+    - from: "iːˌeɪ"
+      to:   "iːˌeː"
+    - from: "iːˌe͡ɪ"
+      to:   "iːˌeː"
+
+    # Make FACE (eɪ) sound like a real diphthong instead of a flat "e".
+    # Using a semivowel offglide gives a clearer movement in our formant table.
+    # But when FACE is followed by a consonant (e.g. donate = ...eɪt), a full-strength /j/
+    # can sound a bit too "sung". Use a softer glide there.
+    - from: "eɪ"
+      to:   "eᴊ"
+      when:
+        atWordEnd: false
+    - from: "e͡ɪ"
+      to:   "e͡ᴊ"
+      when:
+        atWordEnd: false
+    - from: "eɪ"
+      to:   "ej"
+    - from: "e͡ɪ"
+      to:   "e͡j"
+
+    # eSpeak en-ca uses GOAT as əʊ. Normalize to oʊ so our US/CA GOAT tuning applies.
+    - from: "əʊ"
+      to:   "oʊ"
+    - from: "ə͡ʊ"
+      to:   "o͡ʊ"
+
+    # Treat GOAT (oʊ) as vowel+glide so it doesn't split into two vowel beats
+    # (e.g. "colon" sounding like "coh-oh-len").
+    # But in words like "okay" (əʊkˈeɪ), converting oʊ -> ow makes the /w/ too audible.
+    # Collapse the common unstressed-prefix pattern first.
+    - from: "oʊkˈ"
+      to:   "okˈ"
+    - from: "oʊbˈ"
+      to:   "obˈ"
+    - from: "oʊdˈ"
+      to:   "odˈ"
+    - from: "oʊfˈ"
+      to:   "ofˈ"
+    - from: "oʊpˈ"
+      to:   "opˈ"
+    - from: "oʊtˈ"
+      to:   "otˈ"
+    - from: "oʊsˈ"
+      to:   "osˈ"
+    - from: "oʊmˈ"
+      to:   "omˈ"
+    - from: "oʊnˈ"
+      to:   "onˈ"
+    - from: "oʊlˈ"
+      to:   "olˈ"
+
+    # Use a *soft* /w/ offglide. The plain "w" phoneme is a bit too strong here
+    # ("O" and "no" can sound like "oww").
+    - from: "oʊ"
+      to:   "oᵂ"
+    - from: "o͡ʊ"
+      to:   "oᵂ"
+
+    # eSpeak en-ca uses LOT as ɒ; map to an open back vowel in stop environments.
+    - from: "ɒ"
+      to:   "ɑ"
+      when:
+        beforeClass: CA_LOT_STOP_FOLLOW
+
+    # US/CA GOAT (oʊ) can sound oddly "midwestern" if the /o/ start is too back.
+    # Use a slightly more fronted internal variant.
+    - from: "o"
+      to: "ᵒ"
+
+    # Use a slightly less-fronted GOOSE vowel in US/CA to avoid an overly "oo" quality
+    # in words like "grouping" and "toolbar".
+    - from: "ᵾ"
+      to: "ᵿ"
+
+    # Reduced vowel ɐ can sound a bit "boxy" in our formant table.
+    # Use a more neutral schwa for US/CA.
+    - from: "ɐ"
+      to: "ə"
+
+    # US/CA THOUGHT vowel: make /ɔ(ː)/ more open so it doesn't drift toward an "owe" quality.
+    - from: "ɔː"
+      to: "ᴐː"
+    - from: "ɔ"
+      to: "ᴐ"
+
     # Undo the UK THOUGHT tweak from en.yaml (en.yaml maps ɔː -> ᴏː).
     - from: "ᴏ"
       to: "ɔ"
+    # NOTE:
+    # We intentionally *do not* undo the base English fronting of long /uː/.
+    # It helps avoid the "roo" quality in words like "rules".
     # Force rhotic NURSE.
     - from: "ɜː"
       to: "ɝː"
     - from: "ɜ"
       to: "ɝ"
 
-    # Undo UK broad BATH.
-    - from: "ɑː"
-      to: "æ"
-      when:
-        beforeClass: "BATH_FOLLOW"
+    # Use the dedicated US/CA /r/ variant.
+    - from: "ɹ"
+      to: "ɻ"

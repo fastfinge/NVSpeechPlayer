@@ -4,15 +4,111 @@ settings:
   primaryStressDiv: 1.25
   secondaryStressDiv: 1.07
 
+  # Used when packs insert a length mark (ː).
+  # Portuguese IPA from eSpeak rarely includes ː, so this mainly affects our own rules.
+  lengthenedScale: 1.15
+
   # Smooth vowel-to-vowel transitions inside diphthongs ("ei", "ui", "au", ...).
   # This relies on the frontend option you added.
   segmentBoundarySkipVowelToVowel: true
 
 normalization:
+  classes:
+    # eSpeak Portuguese often uses "ŋ" as a generic *coda nasal marker*
+    # in "vowel + (m/n) + consonant" spellings.
+    #
+    # The earlier approach kept "ŋ" and inserted an extra "n" (ŋn).
+    # That works for some words, but it can sound unclear in the high-vowel
+    # cases (i/o/u) and can introduce a "break" in words like "mundo".
+    #
+    # Here we convert that marker into a clearer nasal consonant directly:
+    #   - before labials: -> m
+    #   - otherwise (including before k): -> n
+    #
+    # We *do not* touch "ŋ" before "ɡ" so real "ng" clusters (inglês,
+    # pinguim, Angola) stay intact.
+    PT_CODA_NASAL_TO_M:
+      - p
+      - b
+      - f
+      - v
+      - m
+
+    PT_CODA_NASAL_TO_N:
+      - t
+      - d
+      - s
+      - z
+      - ʃ
+      - ʒ
+      - t͡ʃ
+      - d͡ʒ
+      - l
+      - ʎ
+      - r
+      - ɾ
+      - n
+      - ɲ
+      - k
+
+    # Nasal vowels we normalize to (used to detect nasal-coda "m" cases like "amplo").
+    PT_NASAL_VOWELS:
+      - ã
+      - ẽ
+      - ĩ
+      - õ
+      - ũ
+      - ᴜ
+
+    # Portuguese vowels we may see in eSpeak IPA output (oral + nasal).
+    # Used for context-aware consonant rules (like strengthening coda "m").
+    PT_VOWELS:
+      - a
+      - e
+      - i
+      - o
+      - u
+      - ɐ
+      - ə
+      - ʊ
+      - æ
+      - ɑ
+      - ɔ
+      - ɛ
+      - ã
+      - ẽ
+      - ĩ
+      - õ
+      - ũ
+      - ᴜ
+
+    # Consonants that commonly follow coda <m> in Portuguese nasal spellings (amplo, campo, também).
+    PT_M_CODA_FOLLOW:
+      - p
+      - b
+      - f
+      - v
+      - t
+      - d
+      - s
+      - z
+      - ʃ
+      - ʒ
+      - t͡ʃ
+      - d͡ʒ
+      - l
+      - r
+      - ɾ
+
   replacements:
     # --- Nasal vowels ---
     # eSpeak pt (--ipa) often emits combining-tilde vowels (e.g. ɐ̃).
     # Convert them to NVSP's precomposed nasal vowels when available.
+    # Pre-stress i in "-ião" sequences (rebelião, religião, avião, união) can sound too short.
+    # Insert a length mark on the i so it carries a little more weight before the stressed nasal diphthong.
+    - from: "iˈɐ̃ʊ̃"
+      to: "iːˈɐ̃ʊ̃"
+
     - from: "ɐ̃ʊ̃"
       to: "ãᴜ"
     - from: "ɐ̃"
@@ -27,6 +123,30 @@ normalization:
       to: "ĩ"
     - from: "ʊ̃"
       to: "ᴜ"
+
+    # --- Coda nasals (dialect/clarity choice) ---
+    # Some speakers want an audible <n>/<m> in sequences like "antes" / "amplo".
+    # eSpeak represents many "vowel + n + consonant" cases as "vowel + ŋ + consonant".
+    # We convert that generic "ŋ" marker into a clearer consonant.
+    - from: "ŋ"
+      to: "m"
+      when:
+        beforeClass: PT_CODA_NASAL_TO_M
+
+    - from: "ŋ"
+      to: "n"
+      when:
+        beforeClass: PT_CODA_NASAL_TO_N
+
+    # Make coda <m> more audible before consonants.
+    # (This helps words like "pomba" where eSpeak outputs "omb" and the "m" can get swallowed.)
+    - from: "m"
+      to: "mm"
+      when:
+        # NOTE: we intentionally allow *any* vowel here. If this ever makes
+        # "imprimir"-style words too heavy, we can narrow PT_VOWELS.
+        afterClass: PT_VOWELS
+        beforeClass: PT_M_CODA_FOLLOW
 
     # --- Diphthongs ---
     # Make the offglide a real glide so it is more audible and doesn't sound like two vowels.

@@ -5,8 +5,8 @@
 
 settings:
   # Timing / stress shaping
-  primaryStressDiv: 1.4
-  secondaryStressDiv: 1.1
+  primaryStressDiv: 1.5
+  secondaryStressDiv: 1.2
 
   # Stop closure insertion ("click" before stops/affricates)
   stopClosureMode: vowel-and-cluster
@@ -18,7 +18,7 @@ settings:
   # Set false only if you explicitly want pauses even between vowel→vowel.
   segmentBoundarySkipVowelToVowel: true
   # If a language relies on lots of vowel-hiatus without explicit syllable boundaries, keep these off (or only enable autoTieDiphthongs and leave the semivowel conversion off).
-  autoTieDiphthongs: true
+  autoTieDiphthongs: false
   autoDiphthongOffglideToSemivowel: true  
   # Length mark (ː) handling
   lengthenedScale: 1.05
@@ -26,8 +26,18 @@ settings:
   applyLengthenedScaleToVowelsOnly: true
 
   # Output gain defaults
-  defaultPreFormantGain: 1.0
+  defaultPreFormantGain: 2.0
   defaultOutputGain: 1.5
+
+# Global intonation defaults.
+# These override the frontend's built-in eSpeak-like tables.
+#
+# Goal here: less "always falling" speech, fewer bouncy pitch steps,
+# and more predictable contours at high rates.
+#
+# Values are pitch percents (0..100) used by the frontend's pitchFromPercent().
+  legacyPitchMode: false
+  legacyPitchInflectionScale: 0.58
 
   # Normalization cleanup
   stripAllophoneDigits: true
@@ -40,6 +50,8 @@ settings:
 
 # Global IPA normalizations that are *not* language-specific.
 # These closely match the multi-character replacements in ipa_bestversion.py.
+  stressedVowelHiatusGapMs: ""
+  stressedVowelHiatusFadeMs: ""
 normalization:
   preReplacements:
     # Tie common affricate spellings into the single phonemes in Phonemes.yaml.

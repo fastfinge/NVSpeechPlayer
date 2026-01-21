@@ -1,7 +1,14 @@
 # Portuguese (Brazil) (pt-br)
 # Inherits from: default.yaml -> pt.yaml
 
-settings: {}
+settings:
+  # Helps make consonant+R clusters (bra, tra, etc.) more distinct.
+  stopClosureMode: "vowel-and-cluster"
+  stopClosureClusterGapsEnabled: true
+  stopClosureClusterGapMs: 28.0
+  stopClosureClusterFadeMs: 5.0
+  stopClosureWordBoundaryClusterGapMs: 12.0
+  stopClosureWordBoundaryClusterFadeMs: 3.0
 
 normalization:
   replacements:
@@ -17,6 +24,29 @@ normalization:
     - from: "æ"
       to: "a"
 
+    # Brazilian Portuguese "ã" tends to be a bit darker/rounder than pt-pt.
+    # Use a dedicated BR nasal-a vowel so it doesn't inherit the European sound.
+    - from: "ã"
+      to: "Ã"
+
     # In Brazilian Portuguese, "r" in clusters and word-final is closer to a tap.
     - from: "r"
       to: "ɾ"
+
+# Insert a non-syllabic schwa-like separator before the tap in consonant+R clusters
+# (bra, tra, cra, fra, ...). This improves intelligibility without creating a full extra syllable.
+- from: "ɾˈ"
+  to: "ᵊɾˈ"
+  when:
+    afterClass: PT_CONSONANTS
+    beforeClass: PT_VOWELS
+- from: "ɾˌ"
+  to: "ᵊɾˌ"
+  when:
+    afterClass: PT_CONSONANTS
+    beforeClass: PT_VOWELS
+- from: "ɾ"
+  to: "ᵊɾ"
+  when:
+    afterClass: PT_CONSONANTS
+    beforeClass: PT_VOWELS

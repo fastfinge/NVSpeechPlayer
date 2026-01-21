@@ -1,7 +1,15 @@
 # packs/lang/en.yaml
-# English base (treat this as UK-ish / non-rhotic baseline)
+# English base
+#
+# Keep this file accent-neutral as much as possible. Put UK-specific
+# pronunciation tweaks in `en-gb.yaml` and US-specific ones in `en-us.yaml`.
 
 settings:
+  # English tends to sound more natural if stressed syllables are not *too* slowed.
+  # This also helps teen numbers (e.g. "14") not feel like the ending is clipped.
+  primaryStressDiv: 1.4
+  secondaryStressDiv: 1.1
+
   # English sounds clearer with explicit stop closures.
   stopClosureMode: always
 
@@ -10,38 +18,38 @@ settings:
 
   # Keep your existing English long /uː/ shortening behavior (matches your Python logic).
   englishLongUShortenEnabled: true
-  englishLongUWordFinalScale: 0.80
+  englishLongUWordFinalScale: 0.95
+  englishLongUKey: "ᵾ"
+
+  # Long vowels (ː) in word-final consonant clusters can sound over-held
+  # in a formant synth (e.g. "rules" /ruːlz/, "dialog" /dʌɪəˌlɔːg/).
+  # This additional scale shortens length-marked vowels when they are the
+  # last vowel in a word and followed by final consonants.
+  #
+  # Tune per-language if needed.
+  lengthenedVowelFinalCodaScale: 0.90
+
 
   # Keep length scaling close to the global default.
   # Over-lengthening can make clusters (like "-dcast") sound overly separated.
 
 normalization:
-  classes:
-    # Rough “BATH set” environments.
-    # This is intentionally tiny and editable by the community.
-    BATH_FOLLOW: ["s", "f", "θ"]
-
   replacements:
     # eSpeak sometimes emits plain 'a' for TRAP. Your Python normalized that to 'æ'.
     - from: "a"
       to: "æ"
 
-    # UK-ish broad BATH:
-    # If eSpeak produces æ in words like "bath/cast/broadcast", push it to ɑː.
-    # This only triggers when the next char after the match is s/f/θ.
-    - from: "æ"
-      to: "ɑː"
-      when:
-        beforeClass: BATH_FOLLOW
+    # UK-ish long /uː/ (GOOSE) is typically more fronted than the generic /u/.
+    # Our multilingual base 'u' is tuned fairly back; map long uː to a UK-specific key (ᵾ)
+    # whose formants are closer to the older en-gb-tuned table.
+    - from: "uː"
+      to: "ᵾː"
 
-    # UK THOUGHT: use a slightly more rounded /ɔː/ variant than the default.
-    # IMPORTANT: Use a single-codepoint internal key ("ᴏ") so tokenization
-    # stays stable (multi-letter keys can be mis-tokenized).
-    - from: "ɔː"
-      to: "ᴏː"
+    # Safety: some eSpeak voices omit the length mark in a few environments.
+    # If that happens, still use the fronted English GOOSE vowel.
+    - from: "u"
+      to: "ᵾ"
 
-    # Safety: if any rhotic NURSE slips in, de-rhoticize for UK baseline.
-    - from: "ɝː"
-      to: "ɜː"
-    - from: "ɝ"
-      to: "ɜ"
+    # Accent-specific vowel set tweaks live in per-region packs:
+    #  - en-gb.yaml (BATH broadening, UK THOUGHT rounding, non-rhotic NURSE)
+    #  - en-us.yaml (rhotic NURSE, narrow BATH, etc.)
