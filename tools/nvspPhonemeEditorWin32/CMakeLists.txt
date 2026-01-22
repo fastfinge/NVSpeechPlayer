@@ -7,6 +7,14 @@ set(NVSP_ROOT "${CMAKE_CURRENT_LIST_DIR}/../..")
 
 add_executable(nvspPhonemeEditor WIN32
   main.cpp
+  AppController.cpp
+  AppController.h
+  Dialogs.cpp
+  Dialogs.h
+  WinUtils.cpp
+  WinUtils.h
+  AccessibilityUtils.cpp
+  AccessibilityUtils.h
   yaml_edit.cpp
   yaml_edit.h
   nvsp_runtime.cpp
