@@ -37,7 +37,12 @@ class NoiseGenerator {
 	NoiseGenerator(): lastValue(0.0) {};
 
 	double getNext() {
-		lastValue=((double)rand()/RAND_MAX)+0.75*lastValue;
+		// rand() returns a non-negative value, so using it directly yields strictly
+		// positive noise and a significant DC bias after the one-pole filter.
+		//
+		// Center the random value at 0 ([-0.5, 0.5]) to avoid DC offset "thumps"
+		// when the signal (especially turbulence) is faded in/out.
+		lastValue=(((double)rand()/(double)RAND_MAX)-0.5)+0.75*lastValue;
 		return lastValue;
 	}
 
@@ -71,14 +76,17 @@ class VoiceGenerator {
 
 	double getNext(const speechPlayer_frame_t* frame) {
 		double vibrato=(sin(vibratoGen.getNext(frame->vibratoSpeed)*PITWO)*0.06*frame->vibratoPitchOffset)+1;
-		double voice=pitchGen.getNext(frame->voicePitch*vibrato);
+		double phase=pitchGen.getNext(frame->voicePitch*vibrato);
 		double aspiration=aspirationGen.getNext()*0.2;
 		double turbulence=aspiration*frame->voiceTurbulenceAmplitude;
-		glottisOpen=voice>=frame->glottalOpenQuotient;
+		glottisOpen=phase>=frame->glottalOpenQuotient;
 		if(!glottisOpen) {
 			turbulence*=0.01;
 		}
-		voice=(voice*2)-1;
+		// Keep the classic geometric sawtooth excitation: bright, efficient, and
+		// close to the "classic" Klatt/ETI-style sound. The noise/DC-bias fix
+		// addresses the start/stop pop without needing to replace the source.
+		double voice=(phase*2.0)-1.0;
 		voice+=turbulence;
 		voice*=frame->voiceAmplitude;
 		aspiration*=frame->aspirationAmplitude;
