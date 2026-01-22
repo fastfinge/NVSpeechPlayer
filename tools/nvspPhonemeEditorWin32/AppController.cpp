@@ -77,6 +77,8 @@ bool AppController::Initialize(HINSTANCE hInstance, int nCmdShow) {
 
   RegisterClassW(&wc);
 
+  HMENU hMenu = LoadMenuW(hInstance, MAKEINTRESOURCEW(IDR_MAINMENU));
+
   wnd = CreateWindowExW(
     0,
     wc.lpszClassName,
@@ -87,7 +89,7 @@ bool AppController::Initialize(HINSTANCE hInstance, int nCmdShow) {
     1050,
     780,
     nullptr,
-    nullptr,
+    hMenu,
     hInstance,
     this
   );
